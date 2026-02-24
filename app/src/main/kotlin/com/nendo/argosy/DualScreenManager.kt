@@ -79,6 +79,7 @@ class DualScreenManager(
     private val edenContentManager: com.nendo.argosy.data.emulator.EdenContentManager,
     private val notificationManager: com.nendo.argosy.ui.notification.NotificationManager,
     internal val emulatorConfigDao: com.nendo.argosy.data.local.dao.EmulatorConfigDao,
+    internal val playSessionTracker: com.nendo.argosy.data.emulator.PlaySessionTracker,
     var isRolesSwapped: Boolean = false
 ) {
 
@@ -127,7 +128,7 @@ class DualScreenManager(
     var emulatorMotionDispatcher: ((android.view.MotionEvent) -> Boolean)? = null
 
     var emulatorDisplayId: Int? = null
-    private var isLaunchingGame = false
+    var isLaunchingGame = false
         private set
 
     val isExternalDisplay: Boolean

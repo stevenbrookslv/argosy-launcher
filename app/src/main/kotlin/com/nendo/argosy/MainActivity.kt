@@ -244,6 +244,7 @@ class MainActivity : ComponentActivity() {
                 edenContentManager = edenContentManager,
                 notificationManager = notificationManager,
                 emulatorConfigDao = emulatorConfigDao,
+                playSessionTracker = playSessionTracker,
                 isRolesSwapped = isRolesSwapped
             )
             DualScreenManagerHolder.instance = dualScreenManager

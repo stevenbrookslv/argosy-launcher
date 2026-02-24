@@ -220,6 +220,19 @@ class SecondaryHomeActivity :
         currentChannelName = store.getChannelName()
         isSaveDirty = store.isSaveDirty()
         broadcasts.broadcastCompanionResumed()
+
+        if (isGameActive && dsm.emulatorDisplayId != null && !dsm.isLaunchingGame) {
+            val emulatorPkg = dsm.sessionStateStore.getEmulatorPackage()
+            if (emulatorPkg != null) {
+                val helper = com.nendo.argosy.util.PermissionHelper()
+                if (!helper.isPackageInForeground(this, emulatorPkg, withinMs = 15_000)) {
+                    android.util.Log.d("SecondaryHome", "Emulator exited on secondary display, ending session")
+                    dsm.emulatorDisplayId = null
+                    dsm.playSessionTracker.endSessionInBackground()
+                    dsm.broadcastSessionCleared()
+                }
+            }
+        }
     }
 
     override fun onStop() {

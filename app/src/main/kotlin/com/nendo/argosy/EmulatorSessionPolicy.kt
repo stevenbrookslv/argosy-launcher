@@ -70,13 +70,21 @@ class EmulatorSessionPolicy(
         context: Context,
         dualScreenManager: DualScreenManager
     ) {
-        if (sessionStateStore.isRolesSwapped()) return
-        if (dualScreenManager.emulatorDisplayId != null) return
+        if (dualScreenManager.isLaunchingGame) return
+        if (dualScreenManager.emulatorDisplayId != null) {
+            val emulatorPkg = sessionStateStore.getEmulatorPackage() ?: return
+            if (permissionHelper.isPackageInForeground(
+                    context, emulatorPkg, withinMs = 15_000
+                )
+            ) return
+        }
+
         runBlocking {
             preferencesRepository.getPersistedSession()
         } ?: return
 
         Log.d(TAG, "Ending stale session on resume")
+        dualScreenManager.emulatorDisplayId = null
         playSessionTracker.endSessionInBackground()
         dualScreenManager.broadcastSessionCleared()
 

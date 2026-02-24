@@ -18,7 +18,8 @@ class SessionStateStore(context: Context) {
         gameId: Long,
         channelName: String?,
         isHardcore: Boolean,
-        sessionStartTimeMillis: Long
+        sessionStartTimeMillis: Long,
+        emulatorPackage: String? = null
     ) {
         prefs.edit()
             .putLong(KEY_GAME_ID, gameId)
@@ -26,14 +27,20 @@ class SessionStateStore(context: Context) {
             .putBoolean(KEY_IS_HARDCORE, isHardcore)
             .putBoolean(KEY_HAS_SESSION, true)
             .putLong(KEY_SESSION_START_TIME, sessionStartTimeMillis)
+            .apply {
+                if (emulatorPackage != null) putString(KEY_EMULATOR_PACKAGE, emulatorPackage)
+            }
             .apply()
     }
+
+    fun getEmulatorPackage(): String? = prefs.getString(KEY_EMULATOR_PACKAGE, null)
 
     fun clearSession() {
         prefs.edit()
             .putBoolean(KEY_HAS_SESSION, false)
             .putLong(KEY_GAME_ID, -1)
             .remove(KEY_CHANNEL_NAME)
+            .remove(KEY_EMULATOR_PACKAGE)
             .putBoolean(KEY_IS_HARDCORE, false)
             .putLong(KEY_SESSION_START_TIME, 0)
             .putString(KEY_COMPANION_SCREEN, "HOME")
@@ -218,6 +225,7 @@ class SessionStateStore(context: Context) {
         private const val KEY_CAROUSEL_SECTION_INDEX = "carousel_section_index"
         private const val KEY_CAROUSEL_SELECTED_INDEX = "carousel_selected_index"
         private const val KEY_SESSION_START_TIME = "session_start_time"
+        private const val KEY_EMULATOR_PACKAGE = "emulator_package"
         private const val KEY_WIZARD_ACTIVE = "wizard_active"
         private const val KEY_FIRST_RUN_COMPLETE = "first_run_complete"
         private const val KEY_ACTIVE_MODAL = "active_modal"

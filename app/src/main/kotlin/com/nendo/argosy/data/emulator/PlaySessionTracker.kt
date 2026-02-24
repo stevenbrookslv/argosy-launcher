@@ -103,7 +103,8 @@ class PlaySessionTracker @Inject constructor(
         if (gameId != null && gameId > 0) {
             val startMillis = _activeSession.value?.startTime?.toEpochMilli()
                 ?: System.currentTimeMillis()
-            sessionStateStore.setActiveSession(gameId, channelName, isHardcore, startMillis)
+            val emulatorPkg = _activeSession.value?.emulatorPackage
+            sessionStateStore.setActiveSession(gameId, channelName, isHardcore, startMillis, emulatorPkg)
         } else {
             sessionStateStore.clearSession()
         }
