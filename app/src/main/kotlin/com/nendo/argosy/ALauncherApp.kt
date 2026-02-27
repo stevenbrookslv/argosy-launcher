@@ -19,8 +19,10 @@ import com.nendo.argosy.data.update.UpdateCheckWorker
 import com.nendo.argosy.data.emulator.PlaySessionTracker
 import com.nendo.argosy.libretro.CoreUpdateCheckWorker
 import com.nendo.argosy.libretro.LibretroCoreManager
+import com.nendo.argosy.data.remote.ssl.UserCertTrustManager.withUserCertTrust
 import com.nendo.argosy.ui.coil.AppIconFetcher
 import dagger.hilt.android.HiltAndroidApp
+import okhttp3.OkHttpClient
 import com.nendo.argosy.util.SafeCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -96,7 +98,12 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
             .build()
 
     override fun newImageLoader(): ImageLoader {
+        val okHttpClient = OkHttpClient.Builder()
+            .withUserCertTrust(true)
+            .build()
+
         return ImageLoader.Builder(this)
+            .okHttpClient(okHttpClient)
             .components {
                 add(AppIconFetcher.Factory(packageManager))
             }

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import com.nendo.argosy.data.remote.ssl.UserCertTrustManager.withUserCertTrust
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -311,6 +312,7 @@ class RomMConnectionManager @Inject constructor(
             .writeTimeout(60, TimeUnit.SECONDS)
             .connectionPool(okhttp3.ConnectionPool(0, 1, TimeUnit.NANOSECONDS))
             .dns(okhttp3.Dns.SYSTEM)
+            .withUserCertTrust(true)
             .build()
 
         return Retrofit.Builder()
