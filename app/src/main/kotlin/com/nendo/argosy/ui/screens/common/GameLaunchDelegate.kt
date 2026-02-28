@@ -437,6 +437,7 @@ class GameLaunchDelegate @Inject constructor(
             scope.launch { playSessionTracker.endSession() }
             forceStopIfVita3K(session)
             syncMutex.unlock()
+            onSyncComplete()
             return
         }
 
