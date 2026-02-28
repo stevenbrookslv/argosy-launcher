@@ -5,6 +5,7 @@ import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.StateCacheManager
+import com.nendo.argosy.data.sync.SyncCoordinator
 import com.nendo.argosy.domain.model.UnifiedSaveEntry
 import com.nendo.argosy.domain.model.UnifiedStateEntry
 import com.nendo.argosy.domain.usecase.save.GetUnifiedSavesUseCase
@@ -39,7 +40,8 @@ class SaveChannelDelegate @Inject constructor(
     private val gameRepository: GameRepository,
     private val notificationManager: NotificationManager,
     private val soundManager: SoundFeedbackManager,
-    private val titleIdDownloadObserver: TitleIdDownloadObserver
+    private val titleIdDownloadObserver: TitleIdDownloadObserver,
+    private val syncCoordinator: SyncCoordinator
 ) {
     private val _state = MutableStateFlow(SaveChannelState())
     val state: StateFlow<SaveChannelState> = _state.asStateFlow()
@@ -712,6 +714,7 @@ class SaveChannelDelegate @Inject constructor(
                     )
                 }
                 notificationManager.showSuccess("Created save slot '$name'")
+                scope.launch { syncCoordinator.processQueue() }
             } else {
                 notificationManager.showError("Failed to create save slot")
             }
@@ -748,6 +751,7 @@ class SaveChannelDelegate @Inject constructor(
                     )
                 }
                 notificationManager.showSuccess("Created save slot '$newName'")
+                scope.launch { syncCoordinator.processQueue() }
             } else {
                 notificationManager.showError("Failed to create save slot")
             }

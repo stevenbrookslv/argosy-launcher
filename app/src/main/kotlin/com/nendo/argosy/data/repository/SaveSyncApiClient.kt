@@ -194,7 +194,7 @@ class SaveSyncApiClient @Inject constructor(
                 Logger.warn(TAG, "[SaveSync] WORKER gameId=${game.id} | Skipping save - cannot resolve emulator | serverSaveId=${serverSave.id}, fileName=${serverSave.fileName}")
                 continue
             }
-            val channelName = parseServerChannelName(serverSave.fileName)
+            val channelName = serverSave.slot ?: parseServerChannelName(serverSave.fileName)
 
             if (channelName == null) continue
 
@@ -403,6 +403,7 @@ class SaveSyncApiClient @Inject constructor(
 
             val romFile = game.localPath?.let { File(it) }
             val romBaseName = romFile?.nameWithoutExtension
+            val latestSlotName = romBaseName ?: DEFAULT_SAVE_NAME
 
             val uploadFileName = if (channelName != null) {
                 val ext = fileToUpload.extension
@@ -489,18 +490,8 @@ class SaveSyncApiClient @Inject constructor(
                 }
             }
 
-            val serverSaveIdToUpdate = if (needsGciMigration) {
-                null
-            } else if (channelName != null) {
-                null
-            } else if (serverSaves.isNotEmpty()) {
-                existingServerSave?.id
-            } else {
-                syncEntity?.rommSaveId
-            }
-            val isUpdate = serverSaveIdToUpdate != null
             val uploadStartTime = System.currentTimeMillis()
-            Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId | HTTP request | isUpdate=$isUpdate, saveIdToUpdate=$serverSaveIdToUpdate, fileName=$uploadFileName, size=${uploadFile.length()}bytes, serverSavesCount=${serverSaves.size}")
+            Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId | HTTP request | fileName=$uploadFileName, size=${uploadFile.length()}bytes, serverSavesCount=${serverSaves.size}")
 
             SaveDebugLogger.logSyncUploadStarted(
                 gameId = gameId,
@@ -513,21 +504,11 @@ class SaveSyncApiClient @Inject constructor(
             val requestBody = uploadFile.asRequestBody("application/octet-stream".toMediaType())
             val filePart = MultipartBody.Part.createFormData("saveFile", uploadFileName, requestBody)
 
-            val useAutocleanup = channelName != null
-            var response = if (serverSaveIdToUpdate != null) {
-                if (deviceId != null) api.updateSaveWithDevice(serverSaveIdToUpdate, deviceId!!, slot = channelName, filePart)
-                else api.updateSave(serverSaveIdToUpdate, slot = channelName, filePart)
+            val uploadSlot = channelName ?: latestSlotName
+            val response = if (deviceId != null) {
+                api.uploadSaveWithDevice(rommId, resolvedEmulatorId, deviceId!!, overwrite = forceOverwrite, slot = uploadSlot, autocleanup = true, autocleanupLimit = AUTOCLEANUP_LIMIT, saveFile = filePart)
             } else {
-                if (deviceId != null) api.uploadSaveWithDevice(rommId, resolvedEmulatorId, deviceId!!, overwrite = forceOverwrite, slot = channelName, autocleanup = useAutocleanup, autocleanupLimit = if (useAutocleanup) AUTOCLEANUP_LIMIT else null, saveFile = filePart)
-                else api.uploadSave(rommId, resolvedEmulatorId, slot = channelName, autocleanup = useAutocleanup, autocleanupLimit = if (useAutocleanup) AUTOCLEANUP_LIMIT else null, filePart)
-            }
-
-            if (!response.isSuccessful && response.code() != 409 && serverSaveIdToUpdate != null) {
-                Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId | Update failed, retrying as new upload | status=${response.code()}")
-                val retryRequestBody = uploadFile.asRequestBody("application/octet-stream".toMediaType())
-                val retryFilePart = MultipartBody.Part.createFormData("saveFile", uploadFileName, retryRequestBody)
-                response = if (deviceId != null) api.uploadSaveWithDevice(rommId, resolvedEmulatorId, deviceId!!, overwrite = forceOverwrite, slot = channelName, autocleanup = useAutocleanup, autocleanupLimit = if (useAutocleanup) AUTOCLEANUP_LIMIT else null, saveFile = retryFilePart)
-                else api.uploadSave(rommId, resolvedEmulatorId, slot = channelName, autocleanup = useAutocleanup, autocleanupLimit = if (useAutocleanup) AUTOCLEANUP_LIMIT else null, retryFilePart)
+                api.uploadSave(rommId, resolvedEmulatorId, slot = uploadSlot, autocleanup = true, autocleanupLimit = AUTOCLEANUP_LIMIT, filePart)
             }
 
             if (response.code() == 409) {

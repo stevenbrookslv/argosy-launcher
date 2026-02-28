@@ -81,9 +81,9 @@ class GetUnifiedSavesUseCase @Inject constructor(
 
             if (matchingServer != null) {
                 usedServerIds.add(matchingServer.id)
-                val serverChannelName = matchingServer.slot
-                    ?: parseServerChannelName(matchingServer.fileName, romBaseName)
-                val isLatest = isLatestFileName(matchingServer.fileName, romBaseName)
+                val isLatest = isLatestSlot(matchingServer.slot, matchingServer.fileName, romBaseName)
+                val serverChannelName = if (isLatest) null
+                    else matchingServer.slot ?: parseServerChannelName(matchingServer.fileName, romBaseName)
                 val mergedChannelName = channelName ?: serverChannelName
                 val isLocked = mergedChannelName != null || cache.isLocked
                 val deviceSyncCurrent = saveSyncRepository.getDeviceId()?.let { devId ->
@@ -130,9 +130,9 @@ class GetUnifiedSavesUseCase @Inject constructor(
             if (serverSave.id in usedServerIds) continue
 
             val timestamp = parseServerTimestamp(serverSave.updatedAt) ?: Instant.now()
-            val serverChannelName = serverSave.slot
-                ?: parseServerChannelName(serverSave.fileName, romBaseName)
-            val isLatest = isLatestFileName(serverSave.fileName, romBaseName)
+            val isLatest = isLatestSlot(serverSave.slot, serverSave.fileName, romBaseName)
+            val serverChannelName = if (isLatest) null
+                else serverSave.slot ?: parseServerChannelName(serverSave.fileName, romBaseName)
             val isLocked = serverChannelName != null
             val deviceSyncCurrent = saveSyncRepository.getDeviceId()?.let { devId ->
                 serverSave.deviceSyncs?.find { it.deviceId == devId }?.isCurrent
@@ -166,6 +166,7 @@ class GetUnifiedSavesUseCase @Inject constructor(
             val serverBaseName = File(serverSave.fileName).nameWithoutExtension
             return channelName.equals(serverBaseName, ignoreCase = true)
         }
+        if (serverSave.slot != null) return isLatestName(serverSave.slot, romBaseName)
         val serverBaseName = File(serverSave.fileName).nameWithoutExtension
         return isLatestName(serverBaseName, romBaseName)
     }
@@ -191,6 +192,11 @@ class GetUnifiedSavesUseCase @Inject constructor(
             if (ROMM_TIMESTAMP_TAG.matches(suffix)) return true
         }
         return false
+    }
+
+    private fun isLatestSlot(slot: String?, fileName: String, romBaseName: String?): Boolean {
+        if (slot != null) return isLatestName(slot, romBaseName)
+        return isLatestFileName(fileName, romBaseName)
     }
 
     private fun isLatestFileName(fileName: String, romBaseName: String?): Boolean {

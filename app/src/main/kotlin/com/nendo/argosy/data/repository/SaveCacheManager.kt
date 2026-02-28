@@ -464,10 +464,12 @@ class SaveCacheManager @Inject constructor(
                 note = channelName,
                 isLocked = true,
                 contentHash = source.contentHash,
-                channelName = channelName
+                channelName = channelName,
+                needsRemoteSync = true
             )
 
             val newId = saveCacheDao.insert(entity)
+            saveCacheDao.clearDirtyFlagForChannel(source.gameId, channelName, excludeId = newId)
             Log.d(TAG, "Created channel '$channelName' from cache $cacheId -> $newId")
             newId
         } catch (e: Exception) {
