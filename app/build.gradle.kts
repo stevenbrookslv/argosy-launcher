@@ -105,6 +105,15 @@ android {
         buildConfig = true
     }
 
+    splits {
+        abi {
+            isEnable = project.hasProperty("allAbis")
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = false
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -113,6 +122,18 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+    }
+}
+
+val abiCodes = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2)
+
+android.applicationVariants.all {
+    outputs.all {
+        val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
+        val abi = output.getFilter("ABI")
+        if (abi != null) {
+            output.versionCodeOverride = (abiCodes[abi] ?: 0) * 1000 + (android.defaultConfig.versionCode ?: 0)
+        }
     }
 }
 

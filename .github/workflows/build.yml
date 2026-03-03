@@ -30,7 +30,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug -PciOnly
+        run: ./gradlew assembleDebug -PallAbis
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -57,7 +57,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest -PciOnly
+        run: ./gradlew testDebugUnitTest -PallAbis
 
       - name: Upload test results
         if: always()
@@ -85,7 +85,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Run Android Lint
-        run: ./gradlew lintDebug -PciOnly
+        run: ./gradlew lintDebug -PallAbis
 
       - name: Upload lint results
         if: always()

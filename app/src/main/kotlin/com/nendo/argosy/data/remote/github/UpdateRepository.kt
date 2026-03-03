@@ -180,7 +180,17 @@ class UpdateRepository @Inject constructor(
             Log.d(TAG, "Version comparison: current=$currentVersionInfo, latest=$latestVersion")
 
             if (latestVersion > currentVersionInfo) {
-                val apkAsset = release.assets.find { it.name.endsWith(".apk") }
+                val deviceAbi = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"
+                val abiSuffix = when {
+                    deviceAbi.startsWith("arm64") -> "arm64"
+                    deviceAbi.startsWith("armeabi") || deviceAbi.startsWith("arm") -> "arm32"
+                    else -> "arm64"
+                }
+                val apkAsset = release.assets.find {
+                    it.name.endsWith(".apk") && it.name.contains(abiSuffix)
+                } ?: release.assets.find {
+                    it.name.endsWith(".apk")
+                }
                 if (apkAsset == null) {
                     val error = UpdateState.Error("No APK found in release")
                     _updateState.value = error

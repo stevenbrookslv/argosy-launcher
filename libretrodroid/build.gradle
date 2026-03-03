@@ -21,10 +21,10 @@ android {
         }
 
         ndk {
-            if (project.hasProperty('ciOnly')) {
+            if (project.hasProperty('allAbis') || project.hasProperty('ciOnly')) {
                 abiFilters 'arm64-v8a', 'armeabi-v7a'
             } else {
-                abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+                abiFilters 'arm64-v8a'
             }
         }
     }
