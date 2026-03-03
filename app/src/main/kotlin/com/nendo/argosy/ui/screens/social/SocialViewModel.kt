@@ -3,10 +3,12 @@ package com.nendo.argosy.ui.screens.social
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.social.FeedEventDto
 import com.nendo.argosy.data.social.Friend
 import com.nendo.argosy.data.social.SocialConnectionState
 import com.nendo.argosy.data.social.SocialRepository
+import com.nendo.argosy.data.social.SocialUser
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,43 +21,42 @@ import javax.inject.Inject
 
 private const val TAG = "SocialViewModel"
 
+enum class SocialTab { FEED, FRIENDS, PROFILE }
+
+private const val PROFILE_TOGGLE_COUNT = 4
+
 data class SocialUiState(
     val connectionState: SocialConnectionState = SocialConnectionState.Disconnected,
+    val selectedTab: SocialTab = SocialTab.FEED,
     val events: List<FeedEventDto> = emptyList(),
     val friends: List<Friend> = emptyList(),
-    val selectedFriendIndex: Int = -1,
     val focusedEventIndex: Int = 0,
+    val focusedFriendIndex: Int = 0,
+    val profileFocusIndex: Int = 0,
     val isLoading: Boolean = false,
     val hasMore: Boolean = false,
-    val showOptionsModal: Boolean = false,
-    val optionsModalFocusIndex: Int = 0,
-    val showReportReasonModal: Boolean = false,
-    val reportReasonFocusIndex: Int = 0
+    val socialOnlineStatus: Boolean = true,
+    val socialShowNowPlaying: Boolean = true,
+    val socialNotifyFriendOnline: Boolean = true,
+    val socialNotifyFriendPlaying: Boolean = true
 ) {
-    val selectedFriend: Friend?
-        get() = friends.getOrNull(selectedFriendIndex)
-
-    val filterLabel: String
-        get() = selectedFriend?.displayName ?: "All Friends"
-
     val isConnected: Boolean
         get() = connectionState is SocialConnectionState.Connected
 
+    val connectedUser: SocialUser?
+        get() = (connectionState as? SocialConnectionState.Connected)?.user
+
     val focusedEvent: FeedEventDto?
         get() = events.getOrNull(focusedEventIndex)
-
-    val optionsModalOptionCount: Int
-        get() {
-            val userName = focusedEvent?.user?.displayName
-            val hasEvent = focusedEvent != null
-            return getOptionCount(userName, hasEvent)
-        }
 }
 
 @HiltViewModel
 class SocialViewModel @Inject constructor(
-    private val socialRepository: SocialRepository
+    private val socialRepository: SocialRepository,
+    private val preferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
+
+    val feedOptionsDelegate = FeedOptionsDelegate()
 
     private val _uiState = MutableStateFlow(SocialUiState())
     val uiState: StateFlow<SocialUiState> = _uiState.asStateFlow()
@@ -74,18 +75,13 @@ class SocialViewModel @Inject constructor(
                 val currentState = _uiState.value
                 val newFocusIndex = currentState.focusedEventIndex.coerceIn(0, events.size.coerceAtLeast(1) - 1)
                 Log.v(TAG, "state update: connection=$connection, events=${events.size}, friends=${acceptedFriends.size}, loading=$isLoading, hasMore=$hasMore, focusIndex=$newFocusIndex")
-                SocialUiState(
+                currentState.copy(
                     connectionState = connection,
                     events = events,
                     friends = acceptedFriends,
-                    selectedFriendIndex = currentState.selectedFriendIndex,
                     focusedEventIndex = newFocusIndex,
                     isLoading = isLoading,
-                    hasMore = hasMore,
-                    showOptionsModal = currentState.showOptionsModal,
-                    optionsModalFocusIndex = currentState.optionsModalFocusIndex,
-                    showReportReasonModal = currentState.showReportReasonModal,
-                    reportReasonFocusIndex = currentState.reportReasonFocusIndex
+                    hasMore = hasMore
                 )
             }.collect { newState ->
                 val prev = _uiState.value
@@ -95,18 +91,40 @@ class SocialViewModel @Inject constructor(
                 _uiState.value = newState
             }
         }
+
+        viewModelScope.launch {
+            preferencesRepository.userPreferences.collect { prefs ->
+                _uiState.value = _uiState.value.copy(
+                    socialOnlineStatus = prefs.socialOnlineStatusEnabled,
+                    socialShowNowPlaying = prefs.socialShowNowPlaying,
+                    socialNotifyFriendOnline = prefs.socialNotifyFriendOnline,
+                    socialNotifyFriendPlaying = prefs.socialNotifyFriendPlaying
+                )
+            }
+        }
     }
 
     fun loadFeed() {
-        val selectedFriend = _uiState.value.selectedFriend
-        Log.d(TAG, "loadFeed: selectedFriend=${selectedFriend?.displayName} (${selectedFriend?.id})")
-        socialRepository.requestFeed(userId = selectedFriend?.id)
+        Log.d(TAG, "loadFeed: global feed")
+        socialRepository.requestFeed()
     }
 
     fun refresh() {
         Log.d(TAG, "refresh: resetting focusIndex and reloading")
         _uiState.value = _uiState.value.copy(focusedEventIndex = 0)
         loadFeed()
+    }
+
+    fun switchTab(delta: Int): Boolean {
+        val tabs = SocialTab.entries
+        val currentOrdinal = _uiState.value.selectedTab.ordinal
+        val newOrdinal = (currentOrdinal + delta).coerceIn(0, tabs.size - 1)
+        if (newOrdinal != currentOrdinal) {
+            Log.d(TAG, "switchTab: ${tabs[currentOrdinal]} -> ${tabs[newOrdinal]}")
+            _uiState.value = _uiState.value.copy(selectedTab = tabs[newOrdinal])
+            return true
+        }
+        return false
     }
 
     private fun moveFocus(delta: Int): Boolean {
@@ -133,28 +151,63 @@ class SocialViewModel @Inject constructor(
         return false
     }
 
-    private fun switchFriend(delta: Int): Boolean {
+    private fun moveFriendFocus(delta: Int): Boolean {
         val state = _uiState.value
-        val friends = state.friends
-        if (friends.isEmpty()) {
-            Log.v(TAG, "switchFriend: no friends")
-            return false
-        }
-
-        val newIndex = when {
-            state.selectedFriendIndex == -1 && delta > 0 -> 0
-            state.selectedFriendIndex == 0 && delta < 0 -> -1
-            else -> (state.selectedFriendIndex + delta).coerceIn(-1, friends.size - 1)
-        }
-
-        if (newIndex != state.selectedFriendIndex) {
-            val friendName = if (newIndex == -1) "All Friends" else friends.getOrNull(newIndex)?.displayName
-            Log.d(TAG, "switchFriend: ${state.selectedFriendIndex} -> $newIndex ($friendName)")
-            _uiState.value = state.copy(selectedFriendIndex = newIndex, focusedEventIndex = 0)
-            loadFeed()
+        if (state.friends.isEmpty()) return false
+        val currentIndex = state.focusedFriendIndex
+        val newIndex = (currentIndex + delta).coerceIn(0, state.friends.size - 1)
+        if (newIndex != currentIndex) {
+            Log.v(TAG, "moveFriendFocus: $currentIndex -> $newIndex")
+            _uiState.value = state.copy(focusedFriendIndex = newIndex)
             return true
         }
         return false
+    }
+
+    private fun moveProfileFocus(delta: Int): Boolean {
+        val state = _uiState.value
+        val currentIndex = state.profileFocusIndex
+        val newIndex = (currentIndex + delta).coerceIn(0, PROFILE_TOGGLE_COUNT - 1)
+        if (newIndex != currentIndex) {
+            Log.v(TAG, "moveProfileFocus: $currentIndex -> $newIndex")
+            _uiState.value = state.copy(profileFocusIndex = newIndex)
+            return true
+        }
+        return false
+    }
+
+    private fun toggleProfilePreference(index: Int) {
+        val state = _uiState.value
+        when (index) {
+            0 -> setSocialOnlineStatus(!state.socialOnlineStatus)
+            1 -> setSocialShowNowPlaying(!state.socialShowNowPlaying)
+            2 -> setSocialNotifyFriendOnline(!state.socialNotifyFriendOnline)
+            3 -> setSocialNotifyFriendPlaying(!state.socialNotifyFriendPlaying)
+        }
+    }
+
+    fun setSocialOnlineStatus(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setSocialOnlineStatusEnabled(enabled)
+        }
+    }
+
+    fun setSocialShowNowPlaying(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setSocialShowNowPlaying(enabled)
+        }
+    }
+
+    fun setSocialNotifyFriendOnline(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setSocialNotifyFriendOnline(enabled)
+        }
+    }
+
+    fun setSocialNotifyFriendPlaying(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setSocialNotifyFriendPlaying(enabled)
+        }
     }
 
     fun likeCurrentEvent() {
@@ -178,80 +231,47 @@ class SocialViewModel @Inject constructor(
         }
     }
 
-    fun showReportReasonModal() {
-        Log.d(TAG, "showReportReasonModal")
-        _uiState.value = _uiState.value.copy(showReportReasonModal = true, reportReasonFocusIndex = 0)
-    }
-
-    fun hideReportReasonModal() {
-        Log.d(TAG, "hideReportReasonModal")
-        _uiState.value = _uiState.value.copy(showReportReasonModal = false)
-    }
-
-    private fun moveReportReasonFocus(delta: Int): Boolean {
-        val state = _uiState.value
-        val maxIndex = REPORT_REASON_COUNT - 1
-        val newIndex = (state.reportReasonFocusIndex + delta).coerceIn(0, maxIndex)
-        if (newIndex != state.reportReasonFocusIndex) {
-            _uiState.value = state.copy(reportReasonFocusIndex = newIndex)
-            return true
-        }
-        return false
-    }
-
-    fun showOptionsModal() {
-        Log.d(TAG, "showOptionsModal")
-        _uiState.value = _uiState.value.copy(showOptionsModal = true, optionsModalFocusIndex = 0)
-    }
-
-    fun hideOptionsModal() {
-        Log.d(TAG, "hideOptionsModal")
-        _uiState.value = _uiState.value.copy(showOptionsModal = false)
-    }
-
-    private fun moveOptionsModalFocus(delta: Int): Boolean {
-        val state = _uiState.value
-        val maxIndex = state.optionsModalOptionCount - 1
-        val newIndex = (state.optionsModalFocusIndex + delta).coerceIn(0, maxIndex)
-        if (newIndex != state.optionsModalFocusIndex) {
-            _uiState.value = state.copy(optionsModalFocusIndex = newIndex)
-            return true
-        }
-        return false
-    }
-
     fun createInputHandler(
         onBack: () -> Unit,
         onOpenEventDetail: (String) -> Unit,
         onCreateDoodle: () -> Unit,
         onViewProfile: (String) -> Unit,
         onShareScreenshot: () -> Unit,
-        onNavigateToQuayPass: () -> Unit
+        onDrawerToggle: () -> Unit
     ): InputHandler = object : InputHandler {
+
+        private fun focusedUserName(): String? = _uiState.value.focusedEvent?.user?.displayName
+        private fun hasEvent(): Boolean = _uiState.value.focusedEvent != null
+        private fun anyModalShowing(): Boolean = with(feedOptionsDelegate.state.value) {
+            showOptionsModal || showReportReasonModal
+        }
+
         override fun onUp(): InputResult {
+            val delegateState = feedOptionsDelegate.state.value
             return when {
-                _uiState.value.showReportReasonModal -> {
-                    if (moveReportReasonFocus(-1)) InputResult.HANDLED else InputResult.UNHANDLED
-                }
-                _uiState.value.showOptionsModal -> {
-                    if (moveOptionsModalFocus(-1)) InputResult.HANDLED else InputResult.UNHANDLED
-                }
-                else -> {
-                    if (moveFocus(-1)) InputResult.HANDLED else InputResult.UNHANDLED
+                delegateState.showReportReasonModal ->
+                    if (feedOptionsDelegate.moveReportReasonFocus(-1)) InputResult.HANDLED else InputResult.UNHANDLED
+                delegateState.showOptionsModal ->
+                    if (feedOptionsDelegate.moveOptionsFocus(-1, focusedUserName(), hasEvent())) InputResult.HANDLED else InputResult.UNHANDLED
+                else -> when (_uiState.value.selectedTab) {
+                    SocialTab.FEED -> if (moveFocus(-1)) InputResult.HANDLED else InputResult.UNHANDLED
+                    SocialTab.FRIENDS -> if (moveFriendFocus(-1)) InputResult.HANDLED else InputResult.UNHANDLED
+                    SocialTab.PROFILE -> if (moveProfileFocus(-1)) InputResult.HANDLED else InputResult.UNHANDLED
                 }
             }
         }
 
         override fun onDown(): InputResult {
+            val delegateState = feedOptionsDelegate.state.value
             return when {
-                _uiState.value.showReportReasonModal -> {
-                    if (moveReportReasonFocus(1)) InputResult.HANDLED else InputResult.UNHANDLED
-                }
-                _uiState.value.showOptionsModal -> {
-                    if (moveOptionsModalFocus(1)) InputResult.HANDLED else InputResult.UNHANDLED
-                }
-                else -> {
-                    if (moveFocus(1)) InputResult.HANDLED else InputResult.UNHANDLED
+                delegateState.showReportReasonModal ->
+                    if (feedOptionsDelegate.moveReportReasonFocus(1)) InputResult.HANDLED else InputResult.UNHANDLED
+                delegateState.showOptionsModal ->
+                    if (feedOptionsDelegate.moveOptionsFocus(1, focusedUserName(), hasEvent())) InputResult.HANDLED else InputResult.UNHANDLED
+                else -> when (_uiState.value.selectedTab) {
+                    SocialTab.FEED -> if (moveFocus(1)) InputResult.HANDLED else InputResult.UNHANDLED
+                    SocialTab.FRIENDS -> if (moveFriendFocus(1)) InputResult.HANDLED else InputResult.UNHANDLED
+                    SocialTab.PROFILE -> if (moveProfileFocus(1)) InputResult.HANDLED else InputResult.UNHANDLED
                 }
             }
         }
@@ -260,67 +280,64 @@ class SocialViewModel @Inject constructor(
         override fun onRight(): InputResult = InputResult.UNHANDLED
 
         override fun onConfirm(): InputResult {
-            if (_uiState.value.showReportReasonModal) {
-                val reason = ReportReason.entries[_uiState.value.reportReasonFocusIndex]
+            val delegateState = feedOptionsDelegate.state.value
+
+            if (delegateState.showReportReasonModal) {
+                val reason = feedOptionsDelegate.resolveReportReason()
                 Log.d(TAG, "onConfirm (report modal): reason=${reason.value}")
-                hideReportReasonModal()
+                feedOptionsDelegate.hideReportReasonModal()
                 reportCurrentEvent(reason)
                 return InputResult.HANDLED
             }
 
-            if (_uiState.value.showOptionsModal) {
-                val state = _uiState.value
-                val focusedEvent = state.focusedEvent
-                val userName = focusedEvent?.user?.displayName
-                val hasEvent = focusedEvent != null
-
-                var currentIndex = 0
-                val selectedOption = when (state.optionsModalFocusIndex) {
-                    currentIndex++ -> FeedOption.CREATE_DOODLE
-                    else -> {
-                        if (userName != null && hasEvent && state.optionsModalFocusIndex == currentIndex++) {
-                            FeedOption.VIEW_PROFILE
-                        } else if (hasEvent) {
-                            val baseIndex = if (userName != null) 2 else 1
-                            when (state.optionsModalFocusIndex - baseIndex) {
-                                0 -> FeedOption.SHARE_SCREENSHOT
-                                1 -> FeedOption.REPORT_POST
-                                2 -> FeedOption.HIDE_POST
-                                else -> null
-                            }
-                        } else null
-                    }
-                }
-
+            if (delegateState.showOptionsModal) {
+                val focusedEvent = _uiState.value.focusedEvent
+                val selectedOption = feedOptionsDelegate.resolveOptionAction(
+                    focusedEvent?.user?.displayName,
+                    focusedEvent != null
+                )
                 Log.d(TAG, "onConfirm (modal): selectedOption=$selectedOption")
-                hideOptionsModal()
+                feedOptionsDelegate.hideOptionsModal()
 
                 when (selectedOption) {
                     FeedOption.CREATE_DOODLE -> onCreateDoodle()
-                    FeedOption.QUAYPASS_PLAZA -> onNavigateToQuayPass()
                     FeedOption.VIEW_PROFILE -> focusedEvent?.user?.id?.let { onViewProfile(it) }
                     FeedOption.SHARE_SCREENSHOT -> onShareScreenshot()
-                    FeedOption.REPORT_POST -> showReportReasonModal()
+                    FeedOption.REPORT_POST -> feedOptionsDelegate.showReportReasonModal()
                     FeedOption.HIDE_POST -> hideCurrentEvent()
                     null -> {}
                 }
                 return InputResult.HANDLED
             }
 
-            // A button opens event detail
-            _uiState.value.focusedEvent?.let { event ->
-                onOpenEventDetail(event.id)
+            return when (_uiState.value.selectedTab) {
+                SocialTab.FEED -> {
+                    _uiState.value.focusedEvent?.let { event ->
+                        onOpenEventDetail(event.id)
+                    }
+                    InputResult.HANDLED
+                }
+                SocialTab.FRIENDS -> {
+                    val state = _uiState.value
+                    val friend = state.friends.getOrNull(state.focusedFriendIndex)
+                    friend?.let { onViewProfile(it.id) }
+                    InputResult.HANDLED
+                }
+                SocialTab.PROFILE -> {
+                    toggleProfilePreference(_uiState.value.profileFocusIndex)
+                    InputResult.HANDLED
+                }
             }
-            return InputResult.HANDLED
         }
 
         override fun onBack(): InputResult {
-            if (_uiState.value.showReportReasonModal) {
-                hideReportReasonModal()
+            val delegateState = feedOptionsDelegate.state.value
+            if (delegateState.showReportReasonModal) {
+                feedOptionsDelegate.hideReportReasonModal()
                 return InputResult.HANDLED
             }
-            if (_uiState.value.showOptionsModal) {
-                hideOptionsModal()
+            if (delegateState.showOptionsModal) {
+                feedOptionsDelegate.hideOptionsModal()
                 return InputResult.HANDLED
             }
             onBack()
@@ -328,32 +345,35 @@ class SocialViewModel @Inject constructor(
         }
 
         override fun onMenu(): InputResult {
-            if (_uiState.value.showOptionsModal) return InputResult.UNHANDLED
-            refresh()
+            if (anyModalShowing()) return InputResult.UNHANDLED
+            onDrawerToggle()
             return InputResult.HANDLED
         }
 
         override fun onSecondaryAction(): InputResult {
-            // Y button now likes (matches Favorite convention)
-            if (_uiState.value.showOptionsModal) return InputResult.UNHANDLED
+            if (anyModalShowing()) return InputResult.UNHANDLED
+            if (_uiState.value.selectedTab != SocialTab.FEED) return InputResult.UNHANDLED
             likeCurrentEvent()
             return InputResult.HANDLED
         }
 
         override fun onSelect(): InputResult {
-            if (_uiState.value.showOptionsModal) return InputResult.UNHANDLED
-            showOptionsModal()
+            if (anyModalShowing()) return InputResult.UNHANDLED
+            if (_uiState.value.selectedTab != SocialTab.FEED) return InputResult.UNHANDLED
+            feedOptionsDelegate.showOptionsModal()
             return InputResult.HANDLED
         }
 
         override fun onContextMenu(): InputResult = InputResult.UNHANDLED
+
         override fun onPrevSection(): InputResult {
-            if (_uiState.value.showOptionsModal) return InputResult.UNHANDLED
-            return if (switchFriend(-1)) InputResult.HANDLED else InputResult.UNHANDLED
+            if (anyModalShowing()) return InputResult.UNHANDLED
+            return if (switchTab(-1)) InputResult.HANDLED else InputResult.UNHANDLED
         }
+
         override fun onNextSection(): InputResult {
-            if (_uiState.value.showOptionsModal) return InputResult.UNHANDLED
-            return if (switchFriend(1)) InputResult.HANDLED else InputResult.UNHANDLED
+            if (anyModalShowing()) return InputResult.UNHANDLED
+            return if (switchTab(1)) InputResult.HANDLED else InputResult.UNHANDLED
         }
     }
 }

@@ -60,6 +60,7 @@ import androidx.compose.ui.zIndex
 import androidx.compose.foundation.layout.offset
 import com.nendo.argosy.data.social.SocialUser
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -76,6 +77,7 @@ import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
+import com.nendo.argosy.ui.util.clickableNoFocus
 import java.time.Duration
 import java.time.Instant
 
@@ -86,22 +88,20 @@ fun SocialScreen(
     onOpenEventDetail: (String) -> Unit = {},
     onCreateDoodle: () -> Unit = {},
     onViewProfile: (String) -> Unit = {},
-    onNavigateToQuayPass: () -> Unit = {},
     viewModel: SocialViewModel = hiltViewModel()
 ) {
     val inputDispatcher = LocalInputDispatcher.current
     val context = androidx.compose.ui.platform.LocalContext.current
-    val inputHandler = remember(onBack, onOpenEventDetail, onCreateDoodle, onViewProfile, onNavigateToQuayPass) {
+    val inputHandler = remember(onBack, onDrawerToggle, onOpenEventDetail, onCreateDoodle, onViewProfile) {
         viewModel.createInputHandler(
             onBack = onBack,
             onOpenEventDetail = onOpenEventDetail,
             onCreateDoodle = onCreateDoodle,
             onViewProfile = onViewProfile,
             onShareScreenshot = {
-                // TODO: Implement screenshot capture
                 android.widget.Toast.makeText(context, "Share screenshot coming soon", android.widget.Toast.LENGTH_SHORT).show()
             },
-            onNavigateToQuayPass = onNavigateToQuayPass
+            onDrawerToggle = onDrawerToggle
         )
     }
 
@@ -120,7 +120,9 @@ fun SocialScreen(
     }
 
     val uiState by viewModel.uiState.collectAsState()
-    val listState = rememberLazyListState()
+    val optionsState by viewModel.feedOptionsDelegate.state.collectAsState()
+    val feedListState = rememberLazyListState()
+    val friendsListState = rememberLazyListState()
 
     LaunchedEffect(uiState.isConnected) {
         if (uiState.isConnected && uiState.events.isEmpty()) {
@@ -129,12 +131,22 @@ fun SocialScreen(
     }
 
     LaunchedEffect(uiState.focusedEventIndex) {
-        if (uiState.events.isNotEmpty() && uiState.focusedEventIndex in uiState.events.indices) {
-            val layoutInfo = listState.layoutInfo
+        if (uiState.selectedTab == SocialTab.FEED && uiState.events.isNotEmpty() && uiState.focusedEventIndex in uiState.events.indices) {
+            val layoutInfo = feedListState.layoutInfo
             val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
             val itemHeight = layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 200
             val centerOffset = (viewportHeight - itemHeight) / 2
-            listState.animateScrollToItem(uiState.focusedEventIndex, -centerOffset)
+            feedListState.animateScrollToItem(uiState.focusedEventIndex, -centerOffset)
+        }
+    }
+
+    LaunchedEffect(uiState.focusedFriendIndex) {
+        if (uiState.selectedTab == SocialTab.FRIENDS && uiState.friends.isNotEmpty() && uiState.focusedFriendIndex in uiState.friends.indices) {
+            val layoutInfo = friendsListState.layoutInfo
+            val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+            val itemHeight = layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 80
+            val centerOffset = (viewportHeight - itemHeight) / 2
+            friendsListState.animateScrollToItem(uiState.focusedFriendIndex, -centerOffset)
         }
     }
 
@@ -143,29 +155,70 @@ fun SocialScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
+            SocialTabBar(
+                selectedTab = uiState.selectedTab,
+                onTabSelected = { tab ->
+                    val delta = tab.ordinal - uiState.selectedTab.ordinal
+                    if (delta != 0) viewModel.switchTab(delta)
+                }
+            )
+
             Box(modifier = Modifier.weight(1f)) {
-                when (val state = uiState.connectionState) {
-                    is SocialConnectionState.Disconnected,
-                    is SocialConnectionState.AwaitingAuth -> {
-                        NotConnectedContent()
+                when (uiState.selectedTab) {
+                    SocialTab.FEED -> {
+                        when (val state = uiState.connectionState) {
+                            is SocialConnectionState.Disconnected,
+                            is SocialConnectionState.AwaitingAuth -> {
+                                NotConnectedContent()
+                            }
+                            is SocialConnectionState.Connecting -> {
+                                LoadingContent("Connecting...")
+                            }
+                            is SocialConnectionState.Failed -> {
+                                ErrorContent(state.reason)
+                            }
+                            is SocialConnectionState.Connected -> {
+                                if (uiState.isLoading && uiState.events.isEmpty()) {
+                                    LoadingContent("Loading feed...")
+                                } else if (uiState.events.isEmpty()) {
+                                    EmptyFeedContent()
+                                } else {
+                                    FeedContent(
+                                        events = uiState.events,
+                                        focusedIndex = uiState.focusedEventIndex,
+                                        listState = feedListState
+                                    )
+                                }
+                            }
+                        }
                     }
-                    is SocialConnectionState.Connecting -> {
-                        LoadingContent("Connecting...")
-                    }
-                    is SocialConnectionState.Failed -> {
-                        ErrorContent(state.reason)
-                    }
-                    is SocialConnectionState.Connected -> {
-                        if (uiState.isLoading && uiState.events.isEmpty()) {
-                            LoadingContent("Loading feed...")
-                        } else if (uiState.events.isEmpty()) {
-                            EmptyFeedContent()
+                    SocialTab.FRIENDS -> {
+                        if (!uiState.isConnected) {
+                            NotConnectedContent()
                         } else {
-                            FeedContent(
-                                events = uiState.events,
-                                focusedIndex = uiState.focusedEventIndex,
-                                filterLabel = uiState.filterLabel,
-                                listState = listState
+                            FriendsTabContent(
+                                friends = uiState.friends,
+                                focusedIndex = uiState.focusedFriendIndex,
+                                listState = friendsListState,
+                                onViewProfile = onViewProfile
+                            )
+                        }
+                    }
+                    SocialTab.PROFILE -> {
+                        if (!uiState.isConnected) {
+                            NotConnectedContent()
+                        } else {
+                            ProfileTabContent(
+                                user = uiState.connectedUser,
+                                focusIndex = uiState.profileFocusIndex,
+                                onlineStatus = uiState.socialOnlineStatus,
+                                showNowPlaying = uiState.socialShowNowPlaying,
+                                notifyFriendOnline = uiState.socialNotifyFriendOnline,
+                                notifyFriendPlaying = uiState.socialNotifyFriendPlaying,
+                                onToggleOnlineStatus = { viewModel.setSocialOnlineStatus(it) },
+                                onToggleShowNowPlaying = { viewModel.setSocialShowNowPlaying(it) },
+                                onToggleNotifyFriendOnline = { viewModel.setSocialNotifyFriendOnline(it) },
+                                onToggleNotifyFriendPlaying = { viewModel.setSocialNotifyFriendPlaying(it) }
                             )
                         }
                     }
@@ -173,51 +226,113 @@ fun SocialScreen(
             }
 
             FooterBar(
-                hints = listOf(
-                    InputButton.LB to "Prev",
-                    InputButton.RB to "Next",
-                    InputButton.START to "Refresh",
-                    InputButton.A to "View",
-                    InputButton.Y to if (isLiked) "Unlike" else "Like",
-                    InputButton.SELECT to "Options"
-                )
+                hints = buildList {
+                    add(InputButton.LB to "Prev Tab")
+                    add(InputButton.RB to "Next Tab")
+                    add(InputButton.START to "Menu")
+                    when (uiState.selectedTab) {
+                        SocialTab.FEED -> {
+                            add(InputButton.A to "View")
+                            add(InputButton.Y to if (isLiked) "Unlike" else "Like")
+                            add(InputButton.SELECT to "Options")
+                        }
+                        SocialTab.FRIENDS -> {
+                            add(InputButton.A to "Profile")
+                        }
+                        SocialTab.PROFILE -> {
+                            add(InputButton.A to "Toggle")
+                        }
+                    }
+                }
             )
         }
 
-        if (uiState.showOptionsModal) {
+        if (optionsState.showOptionsModal) {
             FeedOptionsModal(
-                focusIndex = uiState.optionsModalFocusIndex,
+                focusIndex = optionsState.optionsModalFocusIndex,
                 userName = focusedEvent?.user?.displayName,
                 hasEvent = focusedEvent != null,
-                onOptionSelect = { option ->
-                    viewModel.hideOptionsModal()
+                onAction = { option ->
+                    viewModel.feedOptionsDelegate.hideOptionsModal()
                     when (option) {
                         FeedOption.CREATE_DOODLE -> onCreateDoodle()
-                        FeedOption.QUAYPASS_PLAZA -> onNavigateToQuayPass()
                         FeedOption.VIEW_PROFILE -> focusedEvent?.user?.id?.let { onViewProfile(it) }
                         FeedOption.SHARE_SCREENSHOT -> {
                             android.widget.Toast.makeText(context, "Share screenshot coming soon", android.widget.Toast.LENGTH_SHORT).show()
                         }
-                        FeedOption.REPORT_POST -> viewModel.showReportReasonModal()
+                        FeedOption.REPORT_POST -> viewModel.feedOptionsDelegate.showReportReasonModal()
                         FeedOption.HIDE_POST -> viewModel.hideCurrentEvent()
                     }
                 },
-                onDismiss = { viewModel.hideOptionsModal() }
+                onDismiss = { viewModel.feedOptionsDelegate.hideOptionsModal() }
             )
         }
 
-        if (uiState.showReportReasonModal) {
+        if (optionsState.showReportReasonModal) {
             ReportReasonModal(
-                focusIndex = uiState.reportReasonFocusIndex,
+                focusIndex = optionsState.reportReasonFocusIndex,
                 onReasonSelect = { reason ->
-                    viewModel.hideReportReasonModal()
+                    viewModel.feedOptionsDelegate.hideReportReasonModal()
                     viewModel.reportCurrentEvent(reason)
                     android.widget.Toast.makeText(context, "Post reported and hidden", android.widget.Toast.LENGTH_SHORT).show()
                 },
-                onDismiss = { viewModel.hideReportReasonModal() }
+                onDismiss = { viewModel.feedOptionsDelegate.hideReportReasonModal() }
             )
         }
     }
+}
+
+@Composable
+private fun SocialTabBar(
+    selectedTab: SocialTab,
+    onTabSelected: (SocialTab) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 24.dp, vertical = 0.dp),
+        horizontalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        SocialTab.entries.forEach { tab ->
+            val isSelected = tab == selectedTab
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickableNoFocus { onTabSelected(tab) }
+                    .then(
+                        if (isSelected) {
+                            Modifier.background(MaterialTheme.colorScheme.primaryContainer)
+                        } else Modifier
+                    )
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = when (tab) {
+                        SocialTab.FEED -> "Feed"
+                        SocialTab.FRIENDS -> "Friends"
+                        SocialTab.PROFILE -> "Profile"
+                    },
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant)
+    )
 }
 
 @Composable
@@ -300,7 +415,6 @@ private fun EmptyFeedContent() {
 private fun FeedContent(
     events: List<FeedEventDto>,
     focusedIndex: Int,
-    filterLabel: String,
     listState: androidx.compose.foundation.lazy.LazyListState
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -312,7 +426,7 @@ private fun FeedContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = filterLabel,
+                text = "Activity",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )

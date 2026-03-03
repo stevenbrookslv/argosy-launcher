@@ -1,7 +1,6 @@
 package com.nendo.argosy.ui.screens.social
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Flag
@@ -15,7 +14,6 @@ import com.nendo.argosy.ui.screens.gamedetail.components.OptionItem
 
 enum class FeedOption {
     CREATE_DOODLE,
-    QUAYPASS_PLAZA,
     VIEW_PROFILE,
     SHARE_SCREENSHOT,
     REPORT_POST,
@@ -34,7 +32,7 @@ fun FeedOptionsModal(
     focusIndex: Int,
     userName: String?,
     hasEvent: Boolean,
-    onOptionSelect: (FeedOption) -> Unit,
+    onAction: (FeedOption) -> Unit,
     onDismiss: () -> Unit
 ) {
     Modal(title = "Options", onDismiss = onDismiss) {
@@ -44,15 +42,7 @@ fun FeedOptionsModal(
             icon = Icons.Default.Brush,
             label = "Create Doodle",
             isFocused = focusIndex == currentIndex,
-            onClick = { onOptionSelect(FeedOption.CREATE_DOODLE) }
-        )
-        currentIndex++
-
-        OptionItem(
-            icon = Icons.Default.Bluetooth,
-            label = "QuayPass Plaza",
-            isFocused = focusIndex == currentIndex,
-            onClick = { onOptionSelect(FeedOption.QUAYPASS_PLAZA) }
+            onClick = { onAction(FeedOption.CREATE_DOODLE) }
         )
         currentIndex++
 
@@ -61,7 +51,7 @@ fun FeedOptionsModal(
                 icon = Icons.Default.Person,
                 label = "View $userName's Profile",
                 isFocused = focusIndex == currentIndex,
-                onClick = { onOptionSelect(FeedOption.VIEW_PROFILE) }
+                onClick = { onAction(FeedOption.VIEW_PROFILE) }
             )
             currentIndex++
         }
@@ -71,7 +61,7 @@ fun FeedOptionsModal(
                 icon = Icons.Default.Share,
                 label = "Share Screenshot",
                 isFocused = focusIndex == currentIndex,
-                onClick = { onOptionSelect(FeedOption.SHARE_SCREENSHOT) }
+                onClick = { onAction(FeedOption.SHARE_SCREENSHOT) }
             )
             currentIndex++
 
@@ -79,7 +69,7 @@ fun FeedOptionsModal(
                 icon = Icons.Default.Flag,
                 label = "Report Post",
                 isFocused = focusIndex == currentIndex,
-                onClick = { onOptionSelect(FeedOption.REPORT_POST) }
+                onClick = { onAction(FeedOption.REPORT_POST) }
             )
             currentIndex++
 
@@ -87,21 +77,10 @@ fun FeedOptionsModal(
                 icon = Icons.Default.VisibilityOff,
                 label = "Hide Post",
                 isFocused = focusIndex == currentIndex,
-                onClick = { onOptionSelect(FeedOption.HIDE_POST) }
+                onClick = { onAction(FeedOption.HIDE_POST) }
             )
         }
     }
-}
-
-fun getOptionCount(userName: String?, hasEvent: Boolean): Int {
-    var count = 2 // Create Doodle and QuayPass Plaza are always present
-    if (hasEvent) {
-        count += 3 // Share, Report, Hide
-        if (userName != null) {
-            count += 1 // View Profile
-        }
-    }
-    return count
 }
 
 @Composable
