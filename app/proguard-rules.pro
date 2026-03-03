@@ -46,3 +46,9 @@
 -keepclassmembers class * implements androidx.lifecycle.LifecycleObserver {
     @androidx.lifecycle.OnLifecycleEvent <methods>;
 }
+
+# Discord Social SDK (optional, may not be present)
+-keep class com.discord.socialsdk.** { *; }
+-keep class discordpp.** { *; }
+-dontwarn com.discord.socialsdk.**
+-dontwarn discordpp.**

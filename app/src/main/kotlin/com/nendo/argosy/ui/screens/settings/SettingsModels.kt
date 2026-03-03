@@ -35,6 +35,7 @@ import com.nendo.argosy.ui.input.SoundPreset
 import com.nendo.argosy.ui.input.SoundType
 import com.nendo.argosy.util.LogLevel
 import com.nendo.argosy.BuildConfig
+import com.nendo.argosy.data.social.discord.DiscordPresenceState
 
 enum class SettingsSection {
     MAIN,
@@ -692,7 +693,11 @@ data class SocialState(
     val onlineStatusEnabled: Boolean = true,
     val showNowPlaying: Boolean = true,
     val notifyFriendOnline: Boolean = true,
-    val notifyFriendPlaying: Boolean = true
+    val notifyFriendPlaying: Boolean = true,
+    val discordLinked: Boolean = false,
+    val discordUsername: String? = null,
+    val discordRichPresenceEnabled: Boolean = true,
+    val discordPresenceState: DiscordPresenceState = DiscordPresenceState.Disconnected
 )
 
 data class SettingsUiState(

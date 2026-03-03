@@ -55,6 +55,8 @@ android {
             }
         } ?: ""
         buildConfigField("String", "UCDATA_PATH", "\"$ucdataPath\"")
+        buildConfigField("String", "DISCORD_APP_ID", "\"${envString("DISCORD_APP_ID")}\"")
+        buildConfigField("Boolean", "DISCORD_SDK_ENABLED", envString("DISCORD_SDK_ENABLED", "false"))
     }
 
     signingConfigs {
@@ -165,6 +167,9 @@ dependencies {
 
     // QR code generation
     implementation("com.google.zxing:core:3.5.3")
+
+    // Discord Social SDK (optional AAR -- place in app/libs/)
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
 
     // Color extraction
     implementation(libs.androidx.palette)

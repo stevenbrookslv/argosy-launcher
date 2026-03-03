@@ -34,7 +34,8 @@ class SocialRepository @Inject constructor(
     private val preferencesRepository: UserPreferencesRepository,
     private val playSessionDao: PlaySessionDao,
     private val gameDao: GameDao,
-    private val notificationManager: NotificationManager
+    private val notificationManager: NotificationManager,
+    private val discordTokenHolder: DiscordTokenHolder
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var hasCompletedInitialSync = false
@@ -58,6 +59,12 @@ class SocialRepository @Inject constructor(
 
     private val _feedEvents = MutableStateFlow<List<FeedEventDto>>(emptyList())
     val feedEvents: StateFlow<List<FeedEventDto>> = _feedEvents.asStateFlow()
+
+    private val _discordLinked = MutableStateFlow(false)
+    val discordLinked: StateFlow<Boolean> = _discordLinked.asStateFlow()
+
+    private val _discordUsername = MutableStateFlow<String?>(null)
+    val discordUsername: StateFlow<String?> = _discordUsername.asStateFlow()
 
     private val _feedHasMore = MutableStateFlow(false)
     val feedHasMore: StateFlow<Boolean> = _feedHasMore.asStateFlow()
@@ -279,6 +286,17 @@ class SocialRepository @Inject constructor(
                         Log.d(TAG, "Server requesting game data: igdbId=${message.igdbId}, title=${message.gameTitle}")
                         handleGameDataRequest(message.igdbId, message.gameTitle, message.fields)
                     }
+                    is ArgosSocialService.IncomingMessage.DiscordTokens -> {
+                        Log.d(TAG, "Received Discord tokens (expires in ${message.expiresIn}s)")
+                        discordTokenHolder.update(message.accessToken, message.tokenType, message.expiresIn)
+                        _discordLinked.value = true
+                    }
+                    is ArgosSocialService.IncomingMessage.DiscordNotLinked -> {
+                        Log.d(TAG, "Discord not linked")
+                        discordTokenHolder.clear()
+                        _discordLinked.value = false
+                        _discordUsername.value = null
+                    }
                     else -> {}
                 }
             }
@@ -289,6 +307,9 @@ class SocialRepository @Inject constructor(
         hasCompletedInitialSync = false
         preferencesRepository.clearSocialCredentials()
         authManager.reset()
+        discordTokenHolder.clear()
+        _discordLinked.value = false
+        _discordUsername.value = null
         _connectionState.value = SocialConnectionState.Disconnected
     }
 
@@ -328,6 +349,9 @@ class SocialRepository @Inject constructor(
         hasCompletedInitialSync = false
         socialService.disconnect()
         authManager.logout()
+        discordTokenHolder.clear()
+        _discordLinked.value = false
+        _discordUsername.value = null
         _connectionState.value = SocialConnectionState.Disconnected
     }
 
@@ -338,6 +362,12 @@ class SocialRepository @Inject constructor(
     }
 
     fun isConnected(): Boolean = socialService.isConnected()
+
+    fun requestDiscordTokens() {
+        if (socialService.isConnected()) {
+            socialService.requestDiscordTokens()
+        }
+    }
 
     fun requestFriendCode() {
         val connected = socialService.isConnected()

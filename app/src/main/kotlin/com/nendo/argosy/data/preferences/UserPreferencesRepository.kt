@@ -134,6 +134,7 @@ class UserPreferencesRepository @Inject constructor(
             socialShowNowPlaying = sync.socialShowNowPlaying,
             socialNotifyFriendOnline = sync.socialNotifyFriendOnline,
             socialNotifyFriendPlaying = sync.socialNotifyFriendPlaying,
+            discordRichPresenceEnabled = sync.discordRichPresenceEnabled,
             lastPlaySessionSync = sync.lastPlaySessionSync
         )
     }
@@ -227,6 +228,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setSocialShowNowPlaying(enabled: Boolean) = syncPrefs.setSocialShowNowPlaying(enabled)
     suspend fun setSocialNotifyFriendOnline(enabled: Boolean) = syncPrefs.setSocialNotifyFriendOnline(enabled)
     suspend fun setSocialNotifyFriendPlaying(enabled: Boolean) = syncPrefs.setSocialNotifyFriendPlaying(enabled)
+    suspend fun setDiscordRichPresenceEnabled(enabled: Boolean) = syncPrefs.setDiscordRichPresenceEnabled(enabled)
     suspend fun setLastPlaySessionSyncTime(time: Instant) = syncPrefs.setLastPlaySessionSyncTime(time)
 
     // --- Controls delegates ---
@@ -516,6 +518,7 @@ data class UserPreferences(
     val socialShowNowPlaying: Boolean = true,
     val socialNotifyFriendOnline: Boolean = true,
     val socialNotifyFriendPlaying: Boolean = true,
+    val discordRichPresenceEnabled: Boolean = true,
     val lastPlaySessionSync: Instant? = null
 ) {
     val isSocialLinked: Boolean get() = socialSessionToken != null

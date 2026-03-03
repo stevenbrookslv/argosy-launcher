@@ -42,7 +42,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
+import com.nendo.argosy.data.social.discord.DiscordPresenceState
 import com.nendo.argosy.ui.components.ActionPreference
+import com.nendo.argosy.ui.components.InfoPreference
 import com.nendo.argosy.ui.components.ListSection
 import com.nendo.argosy.ui.components.SectionFocusedScroll
 import com.nendo.argosy.ui.components.SwitchPreference
@@ -61,17 +63,20 @@ fun SocialSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             ListSection(listStartIndex = 0, listEndIndex = 1, focusStartIndex = 0, focusEndIndex = 0),
             ListSection(listStartIndex = 2, listEndIndex = 4, focusStartIndex = 1, focusEndIndex = 2),
             ListSection(listStartIndex = 5, listEndIndex = 7, focusStartIndex = 3, focusEndIndex = 4),
-            ListSection(listStartIndex = 8, listEndIndex = 9, focusStartIndex = 5, focusEndIndex = 5)
+            ListSection(listStartIndex = 8, listEndIndex = 10, focusStartIndex = 5, focusEndIndex = 6),
+            ListSection(listStartIndex = 11, listEndIndex = 12, focusStartIndex = 7, focusEndIndex = 7)
         )
 
         val focusToListIndex: (Int) -> Int = { focus ->
             when (focus) {
-                0 -> 1
-                1 -> 3
-                2 -> 4
-                3 -> 6
-                4 -> 7
-                5 -> 9
+                0 -> 1      // Account info card
+                1 -> 3      // Online Status
+                2 -> 4      // Show Now Playing
+                3 -> 6      // Friend Comes Online
+                4 -> 7      // Friend Starts Playing
+                5 -> 9      // Discord status
+                6 -> 10     // Rich Presence toggle
+                7 -> 12     // Unlink Account
                 else -> focus
             }
         }
@@ -205,13 +210,50 @@ fun SocialSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     )
                 }
 
+                item { SectionHeader("DISCORD") }
+
+                item {
+                    val discordStatus = when {
+                        !social.discordLinked -> "Not linked -- link at argosy.dev"
+                        social.discordUsername != null -> "Linked as @${social.discordUsername}"
+                        else -> "Linked"
+                    }
+                    val presenceDetail = when (social.discordPresenceState) {
+                        is DiscordPresenceState.Unavailable -> "SDK unavailable"
+                        is DiscordPresenceState.Active -> "Showing: ${social.discordPresenceState.title}"
+                        is DiscordPresenceState.Error -> social.discordPresenceState.message
+                        else -> null
+                    }
+                    InfoPreference(
+                        title = "Status",
+                        value = if (presenceDetail != null) "$discordStatus ($presenceDetail)" else discordStatus,
+                        isFocused = uiState.focusedIndex == 5
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = "Rich Presence",
+                        subtitle = if (!social.discordLinked) {
+                            "Link Discord to enable"
+                        } else if (social.discordRichPresenceEnabled) {
+                            "Show game activity on Discord"
+                        } else {
+                            "Game activity hidden on Discord"
+                        },
+                        isEnabled = social.discordRichPresenceEnabled && social.discordLinked,
+                        isFocused = uiState.focusedIndex == 6,
+                        onToggle = { if (social.discordLinked) viewModel.setDiscordRichPresence(it) }
+                    )
+                }
+
                 item { Spacer(modifier = Modifier.height(Dimens.spacingLg)) }
 
                 item {
                     ActionPreference(
                         title = "Unlink Account",
                         subtitle = "Disconnect from social features",
-                        isFocused = uiState.focusedIndex == 5,
+                        isFocused = uiState.focusedIndex == 7,
                         isDangerous = true,
                         onClick = { viewModel.logoutSocial() }
                     )

@@ -169,6 +169,11 @@ object MessageTypes {
     const val GET_EVENT_COMMENTS = "get_event_comments"
     const val EVENT_COMMENTS = "event_comments"
 
+    // Discord token relay
+    const val REQUEST_DISCORD_TOKENS = "request_discord_tokens"
+    const val DISCORD_TOKENS = "discord_tokens"
+    const val DISCORD_NOT_LINKED = "discord_not_linked"
+
     // Initial state provisioning (received after auth_success)
     const val FRIENDS_DATA = "friends"
     const val SHARED_COLLECTIONS = "shared_collections"

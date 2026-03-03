@@ -91,6 +91,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var emulatorConfigDao: com.nendo.argosy.data.local.dao.EmulatorConfigDao
     @Inject lateinit var playSessionTracker: com.nendo.argosy.data.emulator.PlaySessionTracker
     @Inject lateinit var repairImageCacheUseCase: com.nendo.argosy.domain.usecase.cache.RepairImageCacheUseCase
+    @Inject lateinit var discordPresenceManager: com.nendo.argosy.data.social.discord.DiscordPresenceManager
 
     private val sessionStateStore by lazy {
         com.nendo.argosy.data.preferences.SessionStateStore(this)
@@ -210,6 +211,8 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         hideSystemUI()
+
+        discordPresenceManager.init(this)
 
         val resolver = DisplayRoleResolver(displayAffinityHelper, sessionStateStore)
         isRolesSwapped = resolver.isSwapped

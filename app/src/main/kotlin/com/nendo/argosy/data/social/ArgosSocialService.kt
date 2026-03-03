@@ -108,6 +108,12 @@ class ArgosSocialService @Inject constructor(
             val platform: String?,
             val fields: List<String>
         ) : IncomingMessage()
+        data class DiscordTokens(
+            val accessToken: String,
+            val tokenType: String,
+            val expiresIn: Long
+        ) : IncomingMessage()
+        data object DiscordNotLinked : IncomingMessage()
     }
 
     fun connect(token: String) {
@@ -366,6 +372,20 @@ class ArgosSocialService @Inject constructor(
                     } else null
                 }
 
+                MessageTypes.DISCORD_TOKENS -> {
+                    if (payload != null) {
+                        IncomingMessage.DiscordTokens(
+                            accessToken = payload.getString("access_token"),
+                            tokenType = payload.optString("token_type", "Bearer"),
+                            expiresIn = payload.optLong("expires_in", 3600)
+                        )
+                    } else null
+                }
+
+                MessageTypes.DISCORD_NOT_LINKED -> {
+                    IncomingMessage.DiscordNotLinked
+                }
+
                 MessageTypes.EVENT_COMMENTS -> {
                     if (payload != null) {
                         val eventId = payload.getString("event_id")
@@ -426,6 +446,13 @@ class ArgosSocialService @Inject constructor(
         send(MessageTypes.SYNC_PLAY_SESSIONS, mapOf(
             "sessions" to sessions.map { it.toMap() }
         ))
+    }
+
+    fun requestDiscordTokens() {
+        val json = JSONObject().apply {
+            put("type", MessageTypes.REQUEST_DISCORD_TOKENS)
+        }
+        webSocket?.send(json.toString())
     }
 
     fun getFriendCode() {

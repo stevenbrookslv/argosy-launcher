@@ -22,6 +22,7 @@ import com.nendo.argosy.data.scanner.AndroidGameScanner
 import com.nendo.argosy.data.social.SocialAuthManager
 import com.nendo.argosy.data.social.SocialConnectionState
 import com.nendo.argosy.data.social.SocialRepository
+import com.nendo.argosy.data.social.discord.DiscordPresenceManager
 import com.nendo.argosy.data.update.AppInstaller
 import com.nendo.argosy.domain.usecase.game.ConfigureEmulatorUseCase
 import com.nendo.argosy.domain.usecase.sync.SyncLibraryUseCase
@@ -101,7 +102,8 @@ class SettingsViewModel @Inject constructor(
     internal val inputConfigRepository: com.nendo.argosy.data.repository.InputConfigRepository,
     internal val frameRegistry: com.nendo.argosy.libretro.frame.FrameRegistry,
     internal val displayAffinityHelper: com.nendo.argosy.util.DisplayAffinityHelper,
-    internal val socialRepository: SocialRepository
+    internal val socialRepository: SocialRepository,
+    internal val discordPresenceManager: DiscordPresenceManager
 ) : ViewModel() {
 
     internal val _uiState = MutableStateFlow(SettingsUiState())
@@ -716,7 +718,11 @@ class SettingsViewModel @Inject constructor(
                         onlineStatusEnabled = prefs.socialOnlineStatusEnabled,
                         showNowPlaying = prefs.socialShowNowPlaying,
                         notifyFriendOnline = prefs.socialNotifyFriendOnline,
-                        notifyFriendPlaying = prefs.socialNotifyFriendPlaying
+                        notifyFriendPlaying = prefs.socialNotifyFriendPlaying,
+                        discordLinked = socialRepository.discordLinked.value,
+                        discordUsername = socialRepository.discordUsername.value,
+                        discordRichPresenceEnabled = prefs.discordRichPresenceEnabled,
+                        discordPresenceState = discordPresenceManager.state.value
                     )) }
                 }
                 is SocialConnectionState.AwaitingAuth -> {
@@ -733,6 +739,19 @@ class SettingsViewModel @Inject constructor(
                     )) }
                 }
             }
+        }.launchIn(viewModelScope)
+
+        socialRepository.discordLinked.onEach { linked ->
+            _uiState.update { it.copy(social = it.social.copy(
+                discordLinked = linked,
+                discordUsername = socialRepository.discordUsername.value
+            )) }
+        }.launchIn(viewModelScope)
+
+        discordPresenceManager.state.onEach { presenceState ->
+            _uiState.update { it.copy(social = it.social.copy(
+                discordPresenceState = presenceState
+            )) }
         }.launchIn(viewModelScope)
     }
 
@@ -765,6 +784,16 @@ class SettingsViewModel @Inject constructor(
                         InputResult.handled(SoundType.TOGGLE)
                     }
                     5 -> {
+                        // Discord status row -- non-interactive
+                        InputResult.HANDLED
+                    }
+                    6 -> {
+                        if (state.social.discordLinked) {
+                            setDiscordRichPresence(!state.social.discordRichPresenceEnabled)
+                            InputResult.handled(SoundType.TOGGLE)
+                        } else InputResult.HANDLED
+                    }
+                    7 -> {
                         logoutSocial()
                         InputResult.HANDLED
                     }
@@ -780,7 +809,7 @@ class SettingsViewModel @Inject constructor(
             SocialAuthStatus.NOT_LINKED -> 0
             SocialAuthStatus.AWAITING_AUTH -> 0
             SocialAuthStatus.CONNECTING -> 0
-            SocialAuthStatus.CONNECTED -> 5
+            SocialAuthStatus.CONNECTED -> 7
             SocialAuthStatus.ERROR -> 0
         }
     }
@@ -801,7 +830,8 @@ class SettingsViewModel @Inject constructor(
                         displayName = result.user.displayName,
                         avatarColor = result.user.avatarColor,
                         onlineStatusEnabled = true,
-                        showNowPlaying = true
+                        showNowPlaying = true,
+                        discordRichPresenceEnabled = true
                     )) }
                 }
                 is SocialAuthManager.AuthResult.Error -> {
@@ -877,6 +907,15 @@ class SettingsViewModel @Inject constructor(
             preferencesRepository.setSocialNotifyFriendPlaying(enabled)
             _uiState.update { it.copy(social = it.social.copy(
                 notifyFriendPlaying = enabled
+            )) }
+        }
+    }
+
+    fun setDiscordRichPresence(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setDiscordRichPresenceEnabled(enabled)
+            _uiState.update { it.copy(social = it.social.copy(
+                discordRichPresenceEnabled = enabled
             )) }
         }
     }
