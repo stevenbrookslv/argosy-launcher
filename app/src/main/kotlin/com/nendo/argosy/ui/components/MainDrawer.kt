@@ -443,9 +443,15 @@ private fun FriendItem(
                         tint = Color(0xFF22C55E)
                     )
                     Text(
-                        text = "In Game",
+                        text = if (friend.currentGame != null) {
+                            "Playing ${friend.currentGame.title}"
+                        } else {
+                            "In Game"
+                        },
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF22C55E)
+                        color = Color(0xFF22C55E),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

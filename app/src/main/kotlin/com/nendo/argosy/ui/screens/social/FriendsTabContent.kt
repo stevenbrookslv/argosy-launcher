@@ -19,11 +19,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -159,13 +156,19 @@ private fun FriendCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = presenceLabel(friend.presence),
+                        text = if (friend.presence == PresenceStatus.IN_GAME && friend.currentGame != null) {
+                            "Playing ${friend.currentGame.title}"
+                        } else {
+                            presenceLabel(friend.presence)
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = if (friend.presence == PresenceStatus.OFFLINE || friend.presence == null) {
                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         } else {
                             presenceColor(friend.presence)
-                        }
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
 
                     friend.deviceName?.let { device ->
@@ -179,26 +182,6 @@ private fun FriendCard(
                     }
                 }
 
-                friend.currentGame?.let { game ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.SportsEsports,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = game.title,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
             }
         }
     }

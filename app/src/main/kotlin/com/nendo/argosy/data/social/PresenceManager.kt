@@ -1,5 +1,10 @@
 package com.nendo.argosy.data.social
 
+import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.util.Log
 import com.nendo.argosy.data.emulator.ActiveSession
 import com.nendo.argosy.data.emulator.PlaySessionTracker
@@ -8,6 +13,7 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -17,6 +23,7 @@ import javax.inject.Singleton
 
 @Singleton
 class PresenceManager @Inject constructor(
+    private val application: Application,
     private val socialRepository: SocialRepository,
     private val playSessionTracker: PlaySessionTracker,
     private val preferencesRepository: UserPreferencesRepository,
@@ -27,8 +34,34 @@ class PresenceManager @Inject constructor(
     private var lastSentStatus: PresenceStatus? = null
     private var lastSentGameId: Int? = null
 
+    private val _screenOn = MutableStateFlow(true)
+
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                Intent.ACTION_SCREEN_OFF -> {
+                    Log.d(TAG, "Screen off")
+                    _screenOn.value = false
+                }
+                Intent.ACTION_SCREEN_ON -> {
+                    Log.d(TAG, "Screen on")
+                    _screenOn.value = true
+                }
+            }
+        }
+    }
+
     init {
+        registerScreenReceiver()
         observePresenceChanges()
+    }
+
+    private fun registerScreenReceiver() {
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        application.registerReceiver(screenReceiver, filter)
     }
 
     private fun observePresenceChanges() {
@@ -38,17 +71,18 @@ class PresenceManager @Inject constructor(
                 preferencesRepository.userPreferences.map { prefs ->
                     Triple(prefs.socialOnlineStatusEnabled, prefs.socialShowNowPlaying, prefs.isSocialLinked)
                 }.distinctUntilChanged(),
-                socialRepository.connectionState
-            ) { playSession, prefsTriple, connectionState ->
+                socialRepository.serviceConnectionState,
+                _screenOn
+            ) { playSession, prefsTriple, serviceState, screenOn ->
                 PresenceContext(
                     playSession = playSession,
                     onlineStatusEnabled = prefsTriple.first,
                     showNowPlaying = prefsTriple.second,
                     isSocialLinked = prefsTriple.third,
-                    isConnected = connectionState is SocialConnectionState.Connected
+                    isConnected = serviceState is ArgosSocialService.ConnectionState.Connected,
+                    isScreenOn = screenOn
                 )
             }
-            .distinctUntilChanged()
             .collect { context ->
                 updatePresence(context)
             }
@@ -57,14 +91,17 @@ class PresenceManager @Inject constructor(
 
     private suspend fun updatePresence(context: PresenceContext) {
         if (!context.isSocialLinked || !context.isConnected) {
-            Log.d(TAG, "Skipping presence update - not linked or not connected")
+            if (!context.isConnected) {
+                lastSentStatus = null
+                lastSentGameId = null
+            }
             return
         }
 
         val presenceInfo = calculatePresence(context)
 
         if (presenceInfo.status != lastSentStatus || presenceInfo.gameIgdbId != lastSentGameId) {
-            Log.d(TAG, "Sending presence update: status=${presenceInfo.status}, gameIgdbId=${presenceInfo.gameIgdbId}, gameTitle=${presenceInfo.gameTitle}")
+            Log.d(TAG, "Sending presence: ${presenceInfo.status}, game=${presenceInfo.gameTitle}")
             socialRepository.sendPresence(presenceInfo.status, presenceInfo.gameIgdbId, presenceInfo.gameTitle)
             lastSentStatus = presenceInfo.status
             lastSentGameId = presenceInfo.gameIgdbId
@@ -74,7 +111,7 @@ class PresenceManager @Inject constructor(
     private data class PresenceInfo(val status: PresenceStatus, val gameIgdbId: Int?, val gameTitle: String?)
 
     private suspend fun calculatePresence(context: PresenceContext): PresenceInfo {
-        if (!context.onlineStatusEnabled) {
+        if (!context.onlineStatusEnabled || !context.isScreenOn) {
             return PresenceInfo(PresenceStatus.OFFLINE, null, null)
         }
 
@@ -101,7 +138,8 @@ class PresenceManager @Inject constructor(
         val onlineStatusEnabled: Boolean,
         val showNowPlaying: Boolean,
         val isSocialLinked: Boolean,
-        val isConnected: Boolean
+        val isConnected: Boolean,
+        val isScreenOn: Boolean
     )
 
     companion object {

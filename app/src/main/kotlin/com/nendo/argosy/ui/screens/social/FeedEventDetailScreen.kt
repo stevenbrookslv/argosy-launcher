@@ -866,7 +866,12 @@ private fun CommentInput(
 ) {
     LaunchedEffect(isCommentInputFocused) {
         if (isCommentInputFocused) {
-            commentFocusRequester.requestFocus()
+            kotlinx.coroutines.delay(50)
+            try {
+                commentFocusRequester.requestFocus()
+            } catch (_: IllegalStateException) {
+                // FocusRequester not yet attached to layout
+            }
         }
     }
 

@@ -607,6 +607,15 @@ class ArgosSocialService @Inject constructor(
         return delay
     }
 
+    fun reconnectIfNeeded() {
+        if (sessionToken == null) return
+        val state = _connectionState.value
+        if (state == ConnectionState.Connected || state == ConnectionState.Connecting) return
+        Log.d(TAG, "Proactive reconnect triggered (state=$state)")
+        reconnectAttempts = 0
+        connectInternal()
+    }
+
     fun disconnect() {
         shouldReconnect = false
         webSocket?.close(1000, "User disconnect")
@@ -632,7 +641,14 @@ class ArgosSocialService @Inject constructor(
                     status = obj.getString("status"),
                     presence = presenceObj?.let {
                         PresenceStatus.fromValue(it.optString("status", "offline"))
-                    }
+                    },
+                    currentGame = presenceObj?.optJSONObject("game")?.let { gameJson ->
+                        PresenceGameInfo(
+                            title = gameJson.getString("title"),
+                            coverThumb = gameJson.optString("cover_thumb", null)
+                        )
+                    },
+                    deviceName = presenceObj?.optString("device_name", null)
                 )
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to parse friend", e)
