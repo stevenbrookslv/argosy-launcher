@@ -11,6 +11,14 @@ import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private data class PreferencesSources(
+    val display: DisplayPreferences,
+    val sync: SyncPreferences,
+    val controls: ControlsPreferences,
+    val storage: StoragePreferences,
+    val app: AppPreferences
+)
+
 @Singleton
 class UserPreferencesRepository @Inject constructor(
     private val displayPrefs: DisplayPreferencesRepository,
@@ -22,12 +30,18 @@ class UserPreferencesRepository @Inject constructor(
     private val sessionPrefs: SessionPreferencesRepository
 ) {
     val userPreferences: Flow<UserPreferences> = combine(
-        displayPrefs.preferences,
-        syncPrefs.preferences,
-        controlsPrefs.preferences,
-        storagePrefs.preferences,
-        appPrefs.preferences
-    ) { display, sync, controls, storage, app ->
+        combine(
+            displayPrefs.preferences,
+            syncPrefs.preferences,
+            controlsPrefs.preferences,
+            storagePrefs.preferences,
+            appPrefs.preferences
+        ) { display, sync, controls, storage, app ->
+            PreferencesSources(display, sync, controls, storage, app)
+        },
+        builtinPrefs.isBuiltinLibretroEnabled()
+    ) { sources, builtinEnabled ->
+        val (display, sync, controls, storage, app) = sources
         UserPreferences(
             firstRunComplete = app.firstRunComplete,
             rommBaseUrl = sync.rommBaseUrl,
@@ -120,7 +134,7 @@ class UserPreferencesRepository @Inject constructor(
             ambientLedAudioColors = display.ambientLedAudioColors,
             ambientLedColorMode = display.ambientLedColorMode,
             androidDataSafUri = sync.androidDataSafUri,
-            builtinLibretroEnabled = true,
+            builtinLibretroEnabled = builtinEnabled,
             appAffinityEnabled = app.appAffinityEnabled,
             displayRoleOverride = display.displayRoleOverride,
             dualScreenInputFocus = display.dualScreenInputFocus,
