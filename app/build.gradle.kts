@@ -131,8 +131,11 @@ android.applicationVariants.all {
     outputs.all {
         val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
         val abi = output.getFilter("ABI")
-        if (abi != null) {
-            output.versionCodeOverride = (abiCodes[abi] ?: 0) * 1000 + (android.defaultConfig.versionCode ?: 0)
+        val baseVersionCode = android.defaultConfig.versionCode ?: 0
+        output.versionCodeOverride = if (abi != null) {
+            (abiCodes[abi] ?: 0) * 1000 + baseVersionCode
+        } else {
+            3 * 1000 + baseVersionCode
         }
     }
 }
