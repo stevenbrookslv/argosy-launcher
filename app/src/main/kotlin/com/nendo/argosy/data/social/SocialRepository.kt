@@ -313,6 +313,7 @@ class SocialRepository @Inject constructor(
         _discordLinked.value = false
         _discordUsername.value = null
         _connectionState.value = SocialConnectionState.Disconnected
+        clearSocialData()
     }
 
     private fun attemptAutoConnect() {
@@ -328,7 +329,7 @@ class SocialRepository @Inject constructor(
     private suspend fun connectService() {
         val prefs = preferencesRepository.userPreferences.first()
         val token = prefs.socialSessionToken
-        Log.d(TAG, "connectService: token=${token?.take(10)}...")
+        Log.d(TAG, "connectService: hasToken=${token != null}")
         if (token == null) {
             Log.w(TAG, "connectService: No token available")
             return
@@ -355,6 +356,17 @@ class SocialRepository @Inject constructor(
         _discordLinked.value = false
         _discordUsername.value = null
         _connectionState.value = SocialConnectionState.Disconnected
+        clearSocialData()
+    }
+
+    private fun clearSocialData() {
+        _friends.value = emptyList()
+        _friendCode.value = null
+        _sharedCollections.value = emptyList()
+        _savedCollections.value = emptyList()
+        _feedEvents.value = emptyList()
+        _eventComments.value = emptyMap()
+        _feedHasMore.value = false
     }
 
     fun sendPresence(status: PresenceStatus, gameIgdbId: Int? = null, gameTitle: String? = null): Boolean {
@@ -523,7 +535,7 @@ class SocialRepository @Inject constructor(
     }
 
     fun commentEvent(eventId: String, content: String) {
-        Log.d(TAG, "commentEvent: eventId=$eventId, content=$content, connected=${socialService.isConnected()}")
+        Log.d(TAG, "commentEvent: eventId=$eventId, connected=${socialService.isConnected()}")
         if (socialService.isConnected()) {
             socialService.commentEvent(eventId, content)
         }

@@ -1,6 +1,7 @@
 package com.nendo.argosy.data.social
 
 import android.util.Log
+import com.nendo.argosy.BuildConfig
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.CoroutineScope
@@ -42,7 +43,8 @@ class SocialAuthManager @Inject constructor(
 
     private val okHttpClient: OkHttpClient by lazy {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY
+                    else HttpLoggingInterceptor.Level.NONE
         }
 
         OkHttpClient.Builder()
@@ -126,7 +128,7 @@ class SocialAuthManager @Inject constructor(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
-                Log.d(TAG, "Pending auth message: $text")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Pending auth message received")
                 handlePendingAuthMessage(text)
             }
 

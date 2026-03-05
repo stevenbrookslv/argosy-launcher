@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
+import com.nendo.argosy.BuildConfig
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +56,8 @@ class ArgosSocialService @Inject constructor(
 
     private val okHttpClient: OkHttpClient by lazy {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC
+                    else HttpLoggingInterceptor.Level.NONE
         }
 
         OkHttpClient.Builder()
@@ -161,7 +163,7 @@ class ArgosSocialService @Inject constructor(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
-                Log.d(TAG, "Social message received: ${text.take(200)}")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Social message received: ${text.take(200)}")
                 handleMessage(text)
             }
 
