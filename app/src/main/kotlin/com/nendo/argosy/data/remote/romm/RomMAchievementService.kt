@@ -75,13 +75,26 @@ class RomMAchievementService @Inject constructor(
                 return RomMResult.Error("No RetroAchievements username configured")
             }
 
+            var progression = user.raProgression?.results ?: emptyList()
+
             val response = currentApi.refreshRAProgression(user.id)
             if (response.isSuccessful) {
                 raProgressionRefreshedThisSession = true
-                RomMResult.Success(Unit)
+                val refreshedUserResponse = currentApi.getCurrentUser()
+                if (refreshedUserResponse.isSuccessful) {
+                    progression = refreshedUserResponse.body()?.raProgression?.results ?: emptyList()
+                }
             } else {
-                RomMResult.Error("Failed to refresh RA progression", response.code())
+                raProgressionRefreshedThisSession = true
             }
+
+            cachedRAProgression = progression
+                .filter { it.romRaId != null }
+                .associate { gameProgress ->
+                    gameProgress.romRaId!! to gameProgress.earnedAchievements
+                }
+
+            RomMResult.Success(Unit)
         } catch (e: Exception) {
             RomMResult.Error(e.message ?: "Failed to refresh RA progression")
         }
