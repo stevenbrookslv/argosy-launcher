@@ -92,7 +92,6 @@ fun SocialScreen(
     viewModel: SocialViewModel = hiltViewModel()
 ) {
     val inputDispatcher = LocalInputDispatcher.current
-    val context = androidx.compose.ui.platform.LocalContext.current
     val inputHandler = remember(onBack, onDrawerToggle, onOpenEventDetail, onCreateDoodle, onViewProfile) {
         viewModel.createInputHandler(
             onBack = onBack,
@@ -100,7 +99,7 @@ fun SocialScreen(
             onCreateDoodle = onCreateDoodle,
             onViewProfile = onViewProfile,
             onShareScreenshot = {
-                android.widget.Toast.makeText(context, "Share screenshot coming soon", android.widget.Toast.LENGTH_SHORT).show()
+                viewModel.notificationManager.show(title = "Share screenshot coming soon")
             },
             onDrawerToggle = onDrawerToggle
         )
@@ -272,7 +271,7 @@ fun SocialScreen(
                         FeedOption.CREATE_DOODLE -> onCreateDoodle()
                         FeedOption.VIEW_PROFILE -> focusedEvent?.user?.id?.let { onViewProfile(it) }
                         FeedOption.SHARE_SCREENSHOT -> {
-                            android.widget.Toast.makeText(context, "Share screenshot coming soon", android.widget.Toast.LENGTH_SHORT).show()
+                            viewModel.notificationManager.show(title = "Share screenshot coming soon")
                         }
                         FeedOption.REPORT_POST -> viewModel.feedOptionsDelegate.showReportReasonModal()
                         FeedOption.HIDE_POST -> viewModel.hideCurrentEvent()
@@ -288,7 +287,7 @@ fun SocialScreen(
                 onReasonSelect = { reason ->
                     viewModel.feedOptionsDelegate.hideReportReasonModal()
                     viewModel.reportCurrentEvent(reason)
-                    android.widget.Toast.makeText(context, "Post reported and hidden", android.widget.Toast.LENGTH_SHORT).show()
+                    viewModel.notificationManager.show(title = "Post reported and hidden")
                 },
                 onDismiss = { viewModel.feedOptionsDelegate.hideReportReasonModal() }
             )

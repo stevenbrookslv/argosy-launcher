@@ -64,8 +64,8 @@ internal sealed class MainSettingsItem(
 
     companion object {
         val ALL: List<MainSettingsItem> = listOf(
-            DeviceSettings, GameData, RetroAchievements, Storage, Interface, Controls,
-            Emulators, Bios, Social, Permissions, About
+            DeviceSettings, GameData, Social, RetroAchievements, Storage, Interface, Controls,
+            Emulators, Bios, Permissions, About
         )
     }
 }

@@ -8,6 +8,8 @@ import android.util.Log
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PlaySessionDao
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.nendo.argosy.ui.notification.NotificationDuration
 import com.nendo.argosy.ui.notification.NotificationManager
 import com.nendo.argosy.ui.notification.NotificationType
@@ -649,12 +651,17 @@ class SocialRepository @Inject constructor(
 
             val avatarColorInt = parseAvatarColorInt(friend.avatarColor)
 
+            val title: String?
+            val subtitle: String?
+
             when {
                 startedPlayingNewGame && prefs.socialNotifyFriendPlaying -> {
+                    title = friend.displayName
+                    subtitle = "Started playing ${newGame?.title}"
                     val coverPath = newGame?.coverThumb?.let { saveTempCover(it, friend.id) }
                     notificationManager.show(
-                        title = friend.displayName,
-                        subtitle = "Started playing ${newGame?.title}",
+                        title = title,
+                        subtitle = subtitle,
                         imagePath = coverPath,
                         type = NotificationType.INFO,
                         duration = NotificationDuration.SHORT,
@@ -663,15 +670,25 @@ class SocialRepository @Inject constructor(
                     )
                 }
                 wasOfflineOrAway && isNowOnline && !startedPlayingNewGame && prefs.socialNotifyFriendOnline -> {
+                    title = friend.displayName
+                    subtitle = "Is now online"
                     notificationManager.show(
-                        title = friend.displayName,
-                        subtitle = "Is now online",
+                        title = title,
+                        subtitle = subtitle,
                         type = NotificationType.INFO,
                         duration = NotificationDuration.SHORT,
                         key = "presence_${friend.id}",
                         accentColor = avatarColorInt
                     )
                 }
+                else -> {
+                    title = null
+                    subtitle = null
+                }
+            }
+
+            if (title != null && !isAppInForeground()) {
+                SocialOverlayService.show(context, title, subtitle)
             }
         }
     }
@@ -696,6 +713,10 @@ class SocialRepository @Inject constructor(
         } catch (_: Exception) {
             null
         }
+    }
+
+    private fun isAppInForeground(): Boolean {
+        return ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
     }
 
     companion object {

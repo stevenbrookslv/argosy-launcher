@@ -14,12 +14,19 @@ import android.view.KeyEvent
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.widget.FrameLayout
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -132,6 +139,7 @@ class LibretroActivity : ComponentActivity() {
     private var inGameFrameManager: FrameManager? = null
     private var capturedGameFrame: Bitmap? = null
     private var lastCheatsTab by mutableStateOf(CheatsTab.CHEATS)
+    private var inGameMessage by mutableStateOf<String?>(null)
     private var gameName: String = ""
     private var isFastForwarding = false
     private var isRewinding = false
@@ -251,13 +259,13 @@ class LibretroActivity : ComponentActivity() {
     private fun validateRomFile(romFile: File): Boolean {
         if (!romFile.exists()) {
             Log.e(TAG, "ROM file not found: $romPath")
-            Toast.makeText(this, "Game file not found", Toast.LENGTH_LONG).show()
+            inGameMessage = "Game file not found"
             finish()
             return false
         }
         if (!romFile.canRead()) {
             Log.e(TAG, "ROM file not readable: $romPath")
-            Toast.makeText(this, "Cannot access game file", Toast.LENGTH_LONG).show()
+            inGameMessage = "Cannot access game file"
             finish()
             return false
         }
@@ -383,7 +391,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 Log.e(TAG, "GLRetroView error: code=$errorCode, message=$errorMessage")
                 Log.e(TAG, "Context: gameId=$gameId, core=$coreName, rom=$romPath")
-                Toast.makeText(this@LibretroActivity, errorMessage, Toast.LENGTH_LONG).show()
+                inGameMessage = errorMessage
                 finish()
             }
         }
@@ -438,7 +446,7 @@ class LibretroActivity : ComponentActivity() {
             videoSettings = videoSettings,
             hotkeyManager = inputConfig.hotkeyManager,
             getRetroView = { retroView },
-            showToast = { msg -> Toast.makeText(this, msg, Toast.LENGTH_SHORT).show() },
+            showToast = { msg -> inGameMessage = msg },
             isHardcoreMode = { hardcoreMode },
             onShowMenu = ::showMenu,
             onFastForwardChanged = { ff ->
@@ -565,7 +573,50 @@ class LibretroActivity : ComponentActivity() {
                             .align(Alignment.TopCenter)
                             .statusBarsPadding()
                     )
+                    InGameMessageOverlay(
+                        message = inGameMessage,
+                        onDismiss = { inGameMessage = null },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 24.dp)
+                    )
                 }
+            }
+        }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun InGameMessageOverlay(
+        message: String?,
+        onDismiss: () -> Unit,
+        modifier: Modifier = Modifier
+    ) {
+        androidx.compose.animation.AnimatedVisibility(
+            visible = message != null,
+            enter = androidx.compose.animation.fadeIn(
+                animationSpec = androidx.compose.animation.core.tween(150)
+            ),
+            exit = androidx.compose.animation.fadeOut(
+                animationSpec = androidx.compose.animation.core.tween(150)
+            ),
+            modifier = modifier
+        ) {
+            message?.let { msg ->
+                LaunchedEffect(msg) {
+                    kotlinx.coroutines.delay(2000)
+                    onDismiss()
+                }
+                Text(
+                    text = msg,
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier
+                        .background(
+                            Color.Black.copy(alpha = 0.7f),
+                            RoundedCornerShape(6.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                )
             }
         }
     }
@@ -738,18 +789,18 @@ class LibretroActivity : ComponentActivity() {
         when (action) {
             InGameMenuAction.Resume -> hideMenu()
             InGameMenuAction.QuickSave -> {
-                if (saveStateManager.performQuickSave(retroView)) {
-                    Toast.makeText(this, "State saved", Toast.LENGTH_SHORT).show()
+                inGameMessage = if (saveStateManager.performQuickSave(retroView)) {
+                    "State saved"
                 } else {
-                    Toast.makeText(this, "Failed to save state", Toast.LENGTH_SHORT).show()
+                    "Failed to save state"
                 }
                 hideMenu()
             }
             InGameMenuAction.QuickLoad -> {
-                if (saveStateManager.performQuickLoad(retroView)) {
-                    Toast.makeText(this, "State loaded", Toast.LENGTH_SHORT).show()
+                inGameMessage = if (saveStateManager.performQuickLoad(retroView)) {
+                    "State loaded"
                 } else {
-                    Toast.makeText(this, "Failed to load state", Toast.LENGTH_SHORT).show()
+                    "Failed to load state"
                 }
                 hideMenu()
             }
@@ -1051,6 +1102,9 @@ class LibretroActivity : ComponentActivity() {
                 Variable("opera_high_resolution", "disabled"),
                 Variable("opera_hack_timing_1", "disabled"),
                 Variable("opera_hack_timing_3", "disabled")
+            )
+            "flycast" -> arrayOf(
+                Variable("flycast_threaded_rendering", "disabled")
             )
             else -> emptyArray()
         }

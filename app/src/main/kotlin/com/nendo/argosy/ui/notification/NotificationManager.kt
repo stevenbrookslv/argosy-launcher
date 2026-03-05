@@ -28,6 +28,9 @@ class NotificationManager @Inject constructor() {
     private val _persistentNotification = MutableStateFlow<Notification?>(null)
     val persistentNotification: StateFlow<Notification?> = _persistentNotification.asStateFlow()
 
+    private val _statusNotification = MutableStateFlow<StatusNotification?>(null)
+    val statusNotification: StateFlow<StatusNotification?> = _statusNotification.asStateFlow()
+
     fun show(
         title: String,
         subtitle: String? = null,
@@ -102,6 +105,20 @@ class NotificationManager @Inject constructor() {
         pendingByKey.clear()
         _notifications.value = emptyList()
         _persistentNotification.value = null
+        _statusNotification.value = null
+    }
+
+    fun updateStatus(title: String, subtitle: String? = null, progress: Float? = null) {
+        _statusNotification.value = StatusNotification(
+            title = title,
+            subtitle = subtitle,
+            progress = progress,
+            isActive = true
+        )
+    }
+
+    fun clearStatus() {
+        _statusNotification.value = null
     }
 
     fun showPersistent(

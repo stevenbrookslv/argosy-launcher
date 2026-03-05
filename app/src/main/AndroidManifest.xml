@@ -186,5 +186,9 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/focus_accessibility_config" />
         </service>
+
+        <service
+            android:name=".data.social.SocialOverlayService"
+            android:exported="false" />
     </application>
 </manifest>

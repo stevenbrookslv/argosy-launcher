@@ -8,9 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,11 +24,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,12 +36,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.nendo.argosy.R
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import kotlinx.coroutines.delay
@@ -63,6 +57,7 @@ fun NotificationHost(
 ) {
     val notifications by manager.notifications.collectAsState()
     val persistent by manager.persistentNotification.collectAsState()
+    val status by manager.statusNotification.collectAsState()
     val current = notifications.firstOrNull()
 
     LaunchedEffect(current?.id) {
@@ -73,6 +68,19 @@ fun NotificationHost(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
+        AnimatedVisibility(
+            visible = status != null,
+            enter = slideInHorizontally(initialOffsetX = { it }) +
+                    fadeIn(animationSpec = tween(200)),
+            exit = slideOutHorizontally(targetOffsetX = { it / 3 }) +
+                   fadeOut(animationSpec = tween(150)),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = Dimens.spacingMd, top = Dimens.spacingSm)
+        ) {
+            status?.let { StatusNotificationBar(status = it) }
+        }
+
         AnimatedVisibility(
             visible = current != null,
             enter = slideInHorizontally(initialOffsetX = { it }) +
@@ -112,6 +120,77 @@ fun NotificationHost(
 }
 
 @Composable
+private fun StatusNotificationBar(
+    status: StatusNotification,
+    modifier: Modifier = Modifier
+) {
+    val baseColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f)
+    val accentColor = MaterialTheme.colorScheme.secondary
+    val backgroundColor = accentColor.copy(alpha = 0.10f).compositeOver(baseColor)
+    val textColor = MaterialTheme.colorScheme.onSurface
+
+    Column(
+        modifier = modifier
+            .widthIn(max = Dimens.modalWidth - Dimens.headerHeight + Dimens.spacingSm)
+            .clip(RoundedCornerShape(Dimens.spacingSm + Dimens.borderMedium))
+            .background(backgroundColor)
+    ) {
+        Row(
+            modifier = Modifier.padding(Dimens.spacingSm),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_helm),
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(Dimens.iconSm + Dimens.borderMedium)
+            )
+
+            Spacer(modifier = Modifier.width(Dimens.spacingSm))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = status.title,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = textColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                status.subtitle?.let { subtitle ->
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = textColor.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            if (status.progress == null && status.isActive) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(Dimens.iconSm),
+                    color = accentColor,
+                    strokeWidth = Dimens.borderMedium
+                )
+            }
+        }
+
+        status.progress?.let { progress ->
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(Dimens.borderMedium),
+                color = accentColor,
+                trackColor = textColor.copy(alpha = 0.12f)
+            )
+        }
+    }
+}
+
+@Composable
 private fun NotificationBar(
     notification: Notification,
     modifier: Modifier = Modifier
@@ -143,7 +222,7 @@ private fun NotificationBar(
             )
         } else {
             Icon(
-                imageVector = notificationIcon(notification.type),
+                painter = painterResource(R.drawable.ic_helm),
                 contentDescription = null,
                 tint = colors.icon,
                 modifier = Modifier.size(Dimens.iconMd)
@@ -270,14 +349,5 @@ private fun notificationColors(type: NotificationType): NotificationColors {
             icon = MaterialTheme.colorScheme.error,
             tint = MaterialTheme.colorScheme.error
         )
-    }
-}
-
-private fun notificationIcon(type: NotificationType): ImageVector {
-    return when (type) {
-        NotificationType.SUCCESS -> Icons.Default.Check
-        NotificationType.INFO -> Icons.Default.Info
-        NotificationType.WARNING -> Icons.Default.Warning
-        NotificationType.ERROR -> Icons.Default.Close
     }
 }

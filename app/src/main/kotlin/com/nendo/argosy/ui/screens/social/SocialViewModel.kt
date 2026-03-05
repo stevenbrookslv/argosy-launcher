@@ -10,6 +10,7 @@ import com.nendo.argosy.data.social.SocialConnectionState
 import com.nendo.argosy.data.social.SocialRepository
 import com.nendo.argosy.data.social.SocialUser
 import com.nendo.argosy.ui.input.InputHandler
+import com.nendo.argosy.ui.notification.NotificationManager
 import com.nendo.argosy.ui.input.InputResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,7 +54,8 @@ data class SocialUiState(
 @HiltViewModel
 class SocialViewModel @Inject constructor(
     private val socialRepository: SocialRepository,
-    private val preferencesRepository: UserPreferencesRepository
+    private val preferencesRepository: UserPreferencesRepository,
+    val notificationManager: NotificationManager
 ) : ViewModel() {
 
     val feedOptionsDelegate = FeedOptionsDelegate()

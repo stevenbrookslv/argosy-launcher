@@ -41,3 +41,10 @@ data class Notification(
     val progress: NotificationProgress? = null,
     val accentColor: Int? = null
 )
+
+data class StatusNotification(
+    val title: String,
+    val subtitle: String? = null,
+    val progress: Float? = null,
+    val isActive: Boolean = true
+)

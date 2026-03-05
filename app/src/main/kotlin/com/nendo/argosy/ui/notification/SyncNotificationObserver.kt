@@ -36,6 +36,7 @@ class SyncNotificationObserver @Inject constructor(
                     }
 
                     detectStateChanges(previous, current)
+                    updateStatusBar(current)
                     isInitialLoad = false
                 }
         }
@@ -50,7 +51,7 @@ class SyncNotificationObserver @Inject constructor(
             val currOp = current.operations.find { it.gameId == gameId }
 
             if (prevOp?.status != currOp?.status && currOp != null) {
-                showNotificationFor(currOp)
+                showTransientNotification(currOp)
             }
         }
 
@@ -59,17 +60,32 @@ class SyncNotificationObserver @Inject constructor(
         }
     }
 
-    private fun showNotificationFor(operation: SyncOperation) {
+    private fun updateStatusBar(state: SyncQueueState) {
+        val active = state.operations.firstOrNull { it.status == SyncStatus.IN_PROGRESS }
+        if (active != null) {
+            val title = when (active.direction) {
+                SyncDirection.UPLOAD -> "Uploading Save"
+                SyncDirection.DOWNLOAD -> "Downloading Save"
+            }
+            val subtitle = if (active.channelName != null) {
+                "${active.gameName} (${active.channelName})"
+            } else {
+                active.gameName
+            }
+            notificationManager.updateStatus(title = title, subtitle = subtitle)
+        } else if (state.operations.none { it.status == SyncStatus.PENDING }) {
+            notificationManager.clearStatus()
+        }
+    }
+
+    private fun showTransientNotification(operation: SyncOperation) {
         if (isInitialLoad && operation.status != SyncStatus.COMPLETED && operation.status != SyncStatus.FAILED) {
             return
         }
 
         val (title, type, immediate) = when (operation.status) {
-            SyncStatus.PENDING -> Triple("Sync Queued", NotificationType.INFO, false)
-            SyncStatus.IN_PROGRESS -> when (operation.direction) {
-                SyncDirection.UPLOAD -> Triple("Uploading Save", NotificationType.INFO, false)
-                SyncDirection.DOWNLOAD -> Triple("Downloading Save", NotificationType.INFO, false)
-            }
+            SyncStatus.PENDING -> return
+            SyncStatus.IN_PROGRESS -> return
             SyncStatus.COMPLETED -> Triple("Save Synced", NotificationType.SUCCESS, true)
             SyncStatus.FAILED -> when (operation.direction) {
                 SyncDirection.UPLOAD -> Triple("Upload Failed", NotificationType.ERROR, true)

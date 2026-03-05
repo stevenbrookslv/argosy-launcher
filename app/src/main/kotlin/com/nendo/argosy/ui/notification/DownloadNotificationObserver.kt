@@ -35,6 +35,7 @@ class DownloadNotificationObserver @Inject constructor(
                     }
 
                     detectStateChanges(previous, current)
+                    updateStatusBar(current)
                     isInitialLoad = false
                 }
         }
@@ -49,7 +50,7 @@ class DownloadNotificationObserver @Inject constructor(
             val currStatus = current.statusFor(gameId)
 
             if (prevStatus?.state != currStatus?.state && currStatus != null) {
-                showNotificationFor(currStatus)
+                showTransientNotification(currStatus)
             }
         }
 
@@ -61,7 +62,27 @@ class DownloadNotificationObserver @Inject constructor(
         }
     }
 
-    private fun showNotificationFor(progress: DownloadProgress) {
+    private fun updateStatusBar(state: DownloadQueueState) {
+        val active = state.activeDownloads.firstOrNull()
+        if (active != null && active.state == DownloadState.DOWNLOADING) {
+            val progress = if (active.totalBytes > 0) {
+                active.bytesDownloaded.toFloat() / active.totalBytes
+            } else {
+                null
+            }
+            notificationManager.updateStatus(
+                title = "Downloading",
+                subtitle = active.gameTitle,
+                progress = progress
+            )
+        } else if (state.activeDownloads.isEmpty() || state.activeDownloads.all {
+                it.state == DownloadState.COMPLETED || it.state == DownloadState.FAILED || it.state == DownloadState.CANCELLED
+            }) {
+            notificationManager.clearStatus()
+        }
+    }
+
+    private fun showTransientNotification(progress: DownloadProgress) {
         if (isInitialLoad && progress.state != DownloadState.COMPLETED && progress.state != DownloadState.FAILED) {
             return
         }
@@ -69,7 +90,7 @@ class DownloadNotificationObserver @Inject constructor(
         val (title, type, immediate) = when (progress.state) {
             DownloadState.QUEUED -> Triple("Queued", NotificationType.INFO, false)
             DownloadState.WAITING_FOR_STORAGE -> Triple("Waiting for Storage", NotificationType.WARNING, true)
-            DownloadState.DOWNLOADING -> Triple("Downloading", NotificationType.INFO, false)
+            DownloadState.DOWNLOADING -> return
             DownloadState.EXTRACTING -> Triple("Extracting", NotificationType.INFO, false)
             DownloadState.PAUSED -> Triple("Paused", NotificationType.INFO, false)
             DownloadState.COMPLETED -> Triple("Completed", NotificationType.SUCCESS, true)

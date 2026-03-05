@@ -1,6 +1,5 @@
 package com.nendo.argosy.libretro
 
-import android.widget.Toast
 import com.nendo.argosy.data.local.entity.HotkeyAction
 import com.swordfish.libretrodroid.GLRetroView
 
