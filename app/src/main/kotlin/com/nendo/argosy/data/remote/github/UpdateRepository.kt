@@ -187,9 +187,9 @@ class UpdateRepository @Inject constructor(
                     else -> null
                 }
                 val apkAssets = release.assets.filter { it.name.endsWith(".apk") }
-                val apkAsset = if (abiSuffix != null) {
+                val apkAsset = (if (abiSuffix != null) {
                     apkAssets.find { it.name.contains(abiSuffix) }
-                } else null
+                } else null)
                     ?: apkAssets.find { !it.name.contains("arm64") && !it.name.contains("arm32") }
                     ?: apkAssets.firstOrNull()
                 if (apkAsset == null) {
