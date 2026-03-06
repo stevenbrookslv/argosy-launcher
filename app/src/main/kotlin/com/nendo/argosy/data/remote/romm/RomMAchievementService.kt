@@ -85,7 +85,6 @@ class RomMAchievementService @Inject constructor(
                     progression = refreshedUserResponse.body()?.raProgression?.results ?: emptyList()
                 }
             } else {
-                raProgressionRefreshedThisSession = true
                 cachedRAProgression = progression
                     .filter { it.romRaId != null }
                     .associate { gameProgress ->

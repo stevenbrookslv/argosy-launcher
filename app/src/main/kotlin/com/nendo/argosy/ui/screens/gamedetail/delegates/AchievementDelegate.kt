@@ -10,6 +10,7 @@ import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.repository.RetroAchievementsRepository
 import com.nendo.argosy.ui.screens.common.AchievementUpdateBus
+import com.nendo.argosy.util.parseTimestamp
 import com.nendo.argosy.ui.screens.gamedetail.AchievementUi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -194,20 +195,4 @@ class AchievementDelegate @Inject constructor(
         return romMRepository.getEarnedAchievements(gameRaId)
     }
 
-    private fun parseTimestamp(timestamp: String): Long? {
-        return try {
-            java.time.ZonedDateTime.parse(timestamp, java.time.format.DateTimeFormatter.ISO_DATE_TIME).toInstant().toEpochMilli()
-        } catch (_: Exception) {
-            try {
-                java.time.Instant.parse(timestamp).toEpochMilli()
-            } catch (_: Exception) {
-                try {
-                    java.time.LocalDateTime.parse(timestamp, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-                        .atZone(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
-                } catch (_: Exception) {
-                    null
-                }
-            }
-        }
-    }
 }

@@ -384,11 +384,13 @@ class RetroAchievementsRepository @Inject constructor(
 
                 val unlockedTimestamps = achievements
                     .filter { it.dateEarned != null }
-                    .associate { it.id to parseTimestamp(it.dateEarned!!) }
+                    .mapNotNull { ach -> com.nendo.argosy.util.parseTimestamp(ach.dateEarned!!)?.let { ts -> ach.id to ts } }
+                    .toMap()
 
                 val hardcoreUnlockedTimestamps = achievements
                     .filter { it.dateEarnedHardcore != null }
-                    .associate { it.id to parseTimestamp(it.dateEarnedHardcore!!) }
+                    .mapNotNull { ach -> com.nendo.argosy.util.parseTimestamp(ach.dateEarnedHardcore!!)?.let { ts -> ach.id to ts } }
+                    .toMap()
 
                 val patchAchievements = achievements.map { ach ->
                     RAAchievementPatch(
@@ -455,11 +457,13 @@ class RetroAchievementsRepository @Inject constructor(
                 body?.unlocks?.mapTo(ids) { it.id }
                 val timestamps = body?.unlocks
                     ?.filter { it.`when` != null }
-                    ?.associate { it.id to parseTimestamp(it.`when`!!) }
+                    ?.mapNotNull { unlock -> com.nendo.argosy.util.parseTimestamp(unlock.`when`!!)?.let { ts -> unlock.id to ts } }
+                    ?.toMap()
                     ?: emptyMap()
                 val hardcoreTimestamps = body?.hardcoreUnlocks
                     ?.filter { it.`when` != null }
-                    ?.associate { it.id to parseTimestamp(it.`when`!!) }
+                    ?.mapNotNull { unlock -> com.nendo.argosy.util.parseTimestamp(unlock.`when`!!)?.let { ts -> unlock.id to ts } }
+                    ?.toMap()
                     ?: emptyMap()
                 UnlockData(ids, timestamps, hardcoreTimestamps)
             } else {
@@ -480,23 +484,6 @@ class RetroAchievementsRepository @Inject constructor(
             totalCount = achievements.size,
             earnedCount = validUnlocks.size
         )
-    }
-
-    private fun parseTimestamp(timestamp: String): Long {
-        return try {
-            java.time.ZonedDateTime.parse(timestamp, java.time.format.DateTimeFormatter.ISO_DATE_TIME).toInstant().toEpochMilli()
-        } catch (_: Exception) {
-            try {
-                java.time.Instant.parse(timestamp).toEpochMilli()
-            } catch (_: Exception) {
-                try {
-                    java.time.LocalDateTime.parse(timestamp, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-                        .atZone(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
-                } catch (_: Exception) {
-                    System.currentTimeMillis()
-                }
-            }
-        }
     }
 
     private fun generateValidation(achievementId: Long, username: String, hardcore: Boolean): String {

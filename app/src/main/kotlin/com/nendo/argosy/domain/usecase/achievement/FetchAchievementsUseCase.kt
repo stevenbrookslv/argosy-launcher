@@ -7,9 +7,7 @@ import com.nendo.argosy.data.local.entity.AchievementEntity
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.repository.RetroAchievementsRepository
-import java.time.Instant
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
+import com.nendo.argosy.util.parseTimestamp
 import javax.inject.Inject
 
 data class AchievementCounts(
@@ -115,23 +113,6 @@ class FetchAchievementsUseCase @Inject constructor(
                     achievement.badgeUrl,
                     achievement.badgeUrlLock
                 )
-            }
-        }
-    }
-
-    private fun parseTimestamp(timestamp: String): Long? {
-        return try {
-            ZonedDateTime.parse(timestamp, DateTimeFormatter.ISO_DATE_TIME).toInstant().toEpochMilli()
-        } catch (_: Exception) {
-            try {
-                Instant.parse(timestamp).toEpochMilli()
-            } catch (_: Exception) {
-                try {
-                    java.time.LocalDateTime.parse(timestamp, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-                        .atZone(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
-                } catch (_: Exception) {
-                    null
-                }
             }
         }
     }
