@@ -74,11 +74,16 @@ class AchievementDelegate @Inject constructor(
     private suspend fun fetchAchievementsFromRA(raId: Long, gameId: Long): List<AchievementUi> {
         val raData = raRepository.getGameAchievementsWithProgress(raId) ?: return emptyList()
 
-        val entities = raData.achievements.map { achievement ->
+        val entities = mutableListOf<AchievementEntity>()
+        val uiModels = mutableListOf<AchievementUi>()
+
+        raData.achievements.forEach { achievement ->
+            val isUnlocked = achievement.id in raData.unlockedIds
+            val isHardcore = achievement.id in raData.hardcoreUnlockedIds
             val badgeUrl = achievement.badgeName?.let { "https://media.retroachievements.org/Badge/$it.png" }
             val badgeUrlLock = achievement.badgeName?.let { "https://media.retroachievements.org/Badge/${it}_lock.png" }
 
-            AchievementEntity(
+            entities += AchievementEntity(
                 gameId = gameId,
                 raId = achievement.id,
                 title = achievement.title,
@@ -90,7 +95,19 @@ class AchievementDelegate @Inject constructor(
                 unlockedAt = raData.unlockedTimestamps[achievement.id],
                 unlockedHardcoreAt = raData.hardcoreUnlockedTimestamps[achievement.id]
             )
+
+            uiModels += AchievementUi(
+                raId = achievement.id,
+                title = achievement.title,
+                description = achievement.description ?: "",
+                points = achievement.points,
+                type = achievement.type,
+                badgeUrl = if (isUnlocked) badgeUrl else (badgeUrlLock ?: badgeUrl),
+                isUnlocked = isUnlocked,
+                isUnlockedHardcore = isHardcore
+            )
         }
+
         achievementDao.replaceForGame(gameId, entities)
         gameRepository.updateAchievementsFetchedAt(gameId, System.currentTimeMillis())
 
@@ -106,23 +123,7 @@ class AchievementDelegate @Inject constructor(
             }
         }
 
-        return raData.achievements.map { achievement ->
-            val isUnlocked = achievement.id in raData.unlockedIds
-            val isHardcore = achievement.id in raData.hardcoreUnlockedIds
-            val badgeUrl = achievement.badgeName?.let { "https://media.retroachievements.org/Badge/$it.png" }
-            val badgeUrlLock = achievement.badgeName?.let { "https://media.retroachievements.org/Badge/${it}_lock.png" }
-
-            AchievementUi(
-                raId = achievement.id,
-                title = achievement.title,
-                description = achievement.description ?: "",
-                points = achievement.points,
-                type = achievement.type,
-                badgeUrl = if (isUnlocked) badgeUrl else (badgeUrlLock ?: badgeUrl),
-                isUnlocked = isUnlocked,
-                isUnlockedHardcore = isHardcore
-            )
-        }
+        return uiModels
     }
 
     private suspend fun fetchAchievementsFromRomM(rommId: Long, gameId: Long): List<AchievementUi> {
