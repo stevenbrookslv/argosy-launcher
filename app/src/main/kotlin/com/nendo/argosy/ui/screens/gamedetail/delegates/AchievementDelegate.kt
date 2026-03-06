@@ -108,7 +108,7 @@ class AchievementDelegate @Inject constructor(
 
         return raData.achievements.map { achievement ->
             val isUnlocked = achievement.id in raData.unlockedIds
-            val isHardcore = achievement.id in raData.hardcoreUnlockedTimestamps
+            val isHardcore = achievement.id in raData.hardcoreUnlockedIds
             val badgeUrl = achievement.badgeName?.let { "https://media.retroachievements.org/Badge/$it.png" }
             val badgeUrlLock = achievement.badgeName?.let { "https://media.retroachievements.org/Badge/${it}_lock.png" }
 

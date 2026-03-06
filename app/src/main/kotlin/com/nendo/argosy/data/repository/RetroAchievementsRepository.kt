@@ -350,6 +350,7 @@ class RetroAchievementsRepository @Inject constructor(
     data class RAGameAchievements(
         val achievements: List<RAAchievementPatch>,
         val unlockedIds: Set<Long>,
+        val hardcoreUnlockedIds: Set<Long> = emptySet(),
         val unlockedTimestamps: Map<Long, Long> = emptyMap(),
         val hardcoreUnlockedTimestamps: Map<Long, Long> = emptyMap(),
         val totalCount: Int,
@@ -387,6 +388,11 @@ class RetroAchievementsRepository @Inject constructor(
                     .mapNotNull { ach -> com.nendo.argosy.util.parseTimestamp(ach.dateEarned!!)?.let { ts -> ach.id to ts } }
                     .toMap()
 
+                val hardcoreUnlockedIds = achievements
+                    .filter { it.dateEarnedHardcore != null }
+                    .map { it.id }
+                    .toSet()
+
                 val hardcoreUnlockedTimestamps = achievements
                     .filter { it.dateEarnedHardcore != null }
                     .mapNotNull { ach -> com.nendo.argosy.util.parseTimestamp(ach.dateEarnedHardcore!!)?.let { ts -> ach.id to ts } }
@@ -407,6 +413,7 @@ class RetroAchievementsRepository @Inject constructor(
                 RAGameAchievements(
                     achievements = patchAchievements,
                     unlockedIds = unlockedIds,
+                    hardcoreUnlockedIds = hardcoreUnlockedIds,
                     unlockedTimestamps = unlockedTimestamps,
                     hardcoreUnlockedTimestamps = hardcoreUnlockedTimestamps,
                     totalCount = body.numAchievements ?: achievements.size,
@@ -440,6 +447,7 @@ class RetroAchievementsRepository @Inject constructor(
         // Connect API for unlocks (may show emulator warning)
         data class UnlockData(
             val ids: Set<Long>,
+            val hardcoreIds: Set<Long>,
             val timestamps: Map<Long, Long>,
             val hardcoreTimestamps: Map<Long, Long>
         )
@@ -455,6 +463,7 @@ class RetroAchievementsRepository @Inject constructor(
                 val ids = mutableSetOf<Long>()
                 body?.hardcoreUnlocks?.mapTo(ids) { it.id }
                 body?.unlocks?.mapTo(ids) { it.id }
+                val hardcoreIds = body?.hardcoreUnlocks?.map { it.id }?.toSet() ?: emptySet()
                 val timestamps = body?.unlocks
                     ?.filter { it.`when` != null }
                     ?.mapNotNull { unlock -> com.nendo.argosy.util.parseTimestamp(unlock.`when`!!)?.let { ts -> unlock.id to ts } }
@@ -465,12 +474,12 @@ class RetroAchievementsRepository @Inject constructor(
                     ?.mapNotNull { unlock -> com.nendo.argosy.util.parseTimestamp(unlock.`when`!!)?.let { ts -> unlock.id to ts } }
                     ?.toMap()
                     ?: emptyMap()
-                UnlockData(ids, timestamps, hardcoreTimestamps)
+                UnlockData(ids, hardcoreIds, timestamps, hardcoreTimestamps)
             } else {
-                UnlockData(emptySet(), emptyMap(), emptyMap())
+                UnlockData(emptySet(), emptySet(), emptyMap(), emptyMap())
             }
         } catch (e: Exception) {
-            UnlockData(emptySet(), emptyMap(), emptyMap())
+            UnlockData(emptySet(), emptySet(), emptyMap(), emptyMap())
         }
 
         val validAchievementIds = achievements.map { it.id }.toSet()
@@ -479,6 +488,7 @@ class RetroAchievementsRepository @Inject constructor(
         return RAGameAchievements(
             achievements = achievements,
             unlockedIds = validUnlocks,
+            hardcoreUnlockedIds = unlockData.hardcoreIds.filter { it in validAchievementIds }.toSet(),
             unlockedTimestamps = unlockData.timestamps.filterKeys { it in validAchievementIds },
             hardcoreUnlockedTimestamps = unlockData.hardcoreTimestamps.filterKeys { it in validAchievementIds },
             totalCount = achievements.size,
