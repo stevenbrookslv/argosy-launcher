@@ -699,9 +699,16 @@ class SettingsViewModel @Inject constructor(
         socialRepository.connectionState.onEach { state ->
             when (state) {
                 is SocialConnectionState.Disconnected -> {
-                    _uiState.update { it.copy(social = SocialState(
-                        authStatus = SocialAuthStatus.NOT_LINKED
-                    )) }
+                    val prefs = preferencesRepository.userPreferences.first()
+                    if (prefs.isSocialLinked) {
+                        _uiState.update { it.copy(social = it.social.copy(
+                            authStatus = SocialAuthStatus.CONNECTING
+                        )) }
+                    } else {
+                        _uiState.update { it.copy(social = SocialState(
+                            authStatus = SocialAuthStatus.NOT_LINKED
+                        )) }
+                    }
                 }
                 is SocialConnectionState.Connecting -> {
                     _uiState.update { it.copy(social = it.social.copy(
