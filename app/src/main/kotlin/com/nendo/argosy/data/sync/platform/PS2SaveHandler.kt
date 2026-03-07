@@ -69,8 +69,10 @@ class PS2SaveHandler @Inject constructor(
         }
 
     fun findSaveFolderByTitleId(basePath: String, serial: String): String? {
+        Logger.debug(TAG, "findSaveFolderByTitleId: Searching | basePath=$basePath, serial=$serial, normalized=${toFolderName(serial)}")
+
         if (!fal.exists(basePath) || !fal.isDirectory(basePath)) {
-            Logger.debug(TAG, "Base path does not exist | path=$basePath")
+            Logger.debug(TAG, "findSaveFolderByTitleId: Base path does not exist | path=$basePath")
             return null
         }
 
@@ -78,17 +80,21 @@ class PS2SaveHandler @Inject constructor(
             it.isDirectory && it.name.endsWith(".ps2", ignoreCase = true)
         } ?: emptyList()
 
+        Logger.debug(TAG, "findSaveFolderByTitleId: Found ${folderCards.size} memory card(s) | cards=${folderCards.map { it.name }}")
+
         for (card in folderCards) {
-            val match = fal.listFiles(card.path)?.firstOrNull {
-                it.isDirectory && matchesFolderName(it.name, serial)
-            }
+            val folders = fal.listFiles(card.path)?.filter { it.isDirectory } ?: emptyList()
+            Logger.debug(TAG, "findSaveFolderByTitleId: Scanning card=${card.name} | folders=${folders.map { it.name }}")
+
+            val match = folders.firstOrNull { matchesFolderName(it.name, serial) }
             if (match != null) {
-                Logger.debug(TAG, "Save found | card=${card.name}, path=${match.path}")
+                Logger.debug(TAG, "findSaveFolderByTitleId: Match found | card=${card.name}, folder=${match.name}, path=${match.path}")
                 return match.path
             }
         }
 
-        Logger.debug(TAG, "No save found | basePath=$basePath, serial=$serial")
+        val exactMatch = serial.replace("-", "")
+        Logger.debug(TAG, "findSaveFolderByTitleId: No match | serial=$serial, tried=${toFolderName(serial)}, withoutHyphens=$exactMatch. Check if emulator uses a different naming convention.")
         return null
     }
 
