@@ -78,6 +78,7 @@ class GameSessionService : Service() {
     private var isOverlayVisible = false
     private var isWaitingForDirectory = false
     private var lastMidGameCacheId: Long = -1
+    private var consecutiveBackgroundChecks = 0
 
     private var helmIcon: ImageView? = null
     private var checkIcon: ImageView? = null
@@ -135,6 +136,7 @@ class GameSessionService : Service() {
                 currentIsHardcore = isHardcore
                 sessionStartTime = if (startTime > 0) startTime else System.currentTimeMillis()
                 lastMidGameCacheId = -1
+                consecutiveBackgroundChecks = 0
 
                 cleanupPresenceKeepalive()
                 startForegroundWithNotification(gameTitle, NotificationState.PLAYING)
@@ -224,12 +226,23 @@ class GameSessionService : Service() {
         val window = elapsed.coerceIn(30_000L, 4 * 60 * 60 * 1000L)
         val inForeground = permissionHelper.isPackageInForeground(this, pkg, withinMs = window)
         if (inForeground) {
+            if (consecutiveBackgroundChecks > 0) {
+                Logger.debug(TAG, "Emulator $pkg returned to foreground after $consecutiveBackgroundChecks background checks")
+            }
+            consecutiveBackgroundChecks = 0
             handler.postDelayed(emulatorMonitorRunnable, EMULATOR_POLL_INTERVAL_MS)
         } else {
-            Logger.info(TAG, "Emulator $pkg left foreground, ending session (keeping service for presence)")
-            stopWatching()
-            playSessionTracker.endSessionKeepService()
-            enterPresenceKeepalive()
+            consecutiveBackgroundChecks++
+            if (consecutiveBackgroundChecks >= BACKGROUND_CHECK_THRESHOLD) {
+                Logger.info(TAG, "Emulator $pkg confirmed left foreground after ${consecutiveBackgroundChecks * EMULATOR_POLL_INTERVAL_MS / 1000}s, ending session")
+                consecutiveBackgroundChecks = 0
+                stopWatching()
+                playSessionTracker.endSessionKeepService()
+                enterPresenceKeepalive()
+            } else {
+                Logger.debug(TAG, "Emulator $pkg not in foreground (check $consecutiveBackgroundChecks/$BACKGROUND_CHECK_THRESHOLD)")
+                handler.postDelayed(emulatorMonitorRunnable, EMULATOR_POLL_INTERVAL_MS)
+            }
         }
     }
 
@@ -714,6 +727,7 @@ class GameSessionService : Service() {
         private const val CACHE_DEBOUNCE_MS = 250L
         private const val EMULATOR_MONITOR_INITIAL_DELAY_MS = 5_000L
         private const val EMULATOR_POLL_INTERVAL_MS = 5_000L
+        private const val BACKGROUND_CHECK_THRESHOLD = 12  // 60s grace period at 5s intervals
 
         private val IGNORED_DIRECTORY_PATTERNS = setOf(
             "cache",
