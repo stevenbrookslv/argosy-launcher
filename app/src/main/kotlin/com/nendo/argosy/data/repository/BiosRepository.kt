@@ -226,6 +226,27 @@ class BiosRepository @Inject constructor(
         downloaded
     }
 
+    suspend fun redownloadAll(
+        onProgress: ((current: Int, total: Int, fileName: String) -> Unit)? = null
+    ): Int = withContext(Dispatchers.IO) {
+        val all = firmwareDao.getAll()
+        if (all.isEmpty()) return@withContext 0
+
+        Logger.info(TAG, "Redownloading all ${all.size} firmware files")
+        var downloaded = 0
+
+        all.forEachIndexed { index, firmware ->
+            onProgress?.invoke(index + 1, all.size, firmware.fileName)
+            val result = downloadFirmware(firmware.rommId)
+            if (result is BiosDownloadResult.Success) {
+                downloaded++
+            }
+        }
+
+        Logger.info(TAG, "Redownloaded $downloaded of ${all.size} firmware files")
+        downloaded
+    }
+
     suspend fun distributeBiosToEmulator(
         platformSlug: String,
         emulatorId: String

@@ -379,7 +379,7 @@ private fun routeBiosConfirm(vm: SettingsViewModel, state: SettingsUiState): Inp
     when (val item = biosItemAtFocusIndex(state.focusedIndex, bios.platformGroups, bios.expandedPlatformIndex)) {
         BiosItem.Summary -> {
             val actionIndex = bios.actionIndex
-            if (actionIndex == 0 && bios.missingFiles > 0) {
+            if (actionIndex == 0) {
                 vm.downloadAllBios()
             } else if (actionIndex == 1 && bios.downloadedFiles > 0) {
                 vm.distributeAllBios()
@@ -396,7 +396,7 @@ private fun routeBiosConfirm(vm: SettingsViewModel, state: SettingsUiState): Inp
         }
         is BiosItem.Platform -> {
             val group = item.group
-            if (bios.platformSubFocusIndex == 1 && !group.isComplete) {
+            if (bios.platformSubFocusIndex == 1) {
                 vm.downloadBiosForPlatform(group.platformSlug)
             } else {
                 vm.toggleBiosPlatformExpanded(item.index)

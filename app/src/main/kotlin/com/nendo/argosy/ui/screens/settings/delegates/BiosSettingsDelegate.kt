@@ -106,13 +106,20 @@ class BiosSettingsDelegate @Inject constructor(
         scope.launch {
             _state.update { it.copy(isDownloading = true, downloadProgress = 0f) }
 
-            val downloadedCount = biosRepository.downloadAllMissing { current, total, fileName ->
+            val isComplete = _state.value.isComplete
+            val progressCallback: (Int, Int, String) -> Unit = { current, total, fileName ->
                 _state.update {
                     it.copy(
                         downloadingFileName = fileName,
                         downloadProgress = if (total > 0) current.toFloat() / total else 0f
                     )
                 }
+            }
+
+            if (isComplete) {
+                biosRepository.redownloadAll(progressCallback)
+            } else {
+                biosRepository.downloadAllMissing(progressCallback)
             }
 
             _state.update {
@@ -132,19 +139,20 @@ class BiosSettingsDelegate @Inject constructor(
             _state.update { it.copy(isDownloading = true, downloadProgress = 0f) }
 
             val missing = firmwareDao.getMissingByPlatformSlug(platformSlug)
+            val targets = missing.ifEmpty { firmwareDao.getByPlatformSlug(platformSlug) }
             var completed = 0
 
-            for (firmware in missing) {
+            for (firmware in targets) {
                 _state.update {
                     it.copy(
                         downloadingFileName = firmware.fileName,
-                        downloadProgress = if (missing.isNotEmpty()) completed.toFloat() / missing.size else 0f
+                        downloadProgress = if (targets.isNotEmpty()) completed.toFloat() / targets.size else 0f
                     )
                 }
 
                 biosRepository.downloadFirmware(firmware.rommId) { progress ->
                     _state.update {
-                        val overallProgress = (completed + progress.progress) / missing.size
+                        val overallProgress = (completed + progress.progress) / targets.size
                         it.copy(downloadProgress = overallProgress)
                     }
                 }

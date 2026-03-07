@@ -622,7 +622,6 @@ private fun BiosSummaryCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
             ) {
-                val downloadEnabled = missingFiles > 0
                 val downloadSelected = isFocused && actionIndex == 0
                 val downloadBgColor = when {
                     downloadSelected -> MaterialTheme.colorScheme.primary
@@ -631,7 +630,6 @@ private fun BiosSummaryCard(
                 }
                 val downloadTextColor = when {
                     downloadSelected -> MaterialTheme.colorScheme.onPrimary
-                    !downloadEnabled -> contentColor.copy(alpha = 0.5f)
                     else -> contentColor
                 }
 
@@ -640,7 +638,7 @@ private fun BiosSummaryCard(
                         .weight(1f)
                         .clip(RoundedCornerShape(Dimens.radiusSm))
                         .background(downloadBgColor)
-                        .clickableNoFocus(enabled = downloadEnabled) { onDownloadAll() }
+                        .clickableNoFocus { onDownloadAll() }
                         .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
                     contentAlignment = Alignment.Center
                 ) {
@@ -653,7 +651,7 @@ private fun BiosSummaryCard(
                         )
                         Spacer(modifier = Modifier.width(Dimens.spacingXs))
                         Text(
-                            text = if (missingFiles > 0) "Download $missingFiles" else "Complete",
+                            text = if (missingFiles > 0) "Download $missingFiles" else "Redownload",
                             style = MaterialTheme.typography.labelMedium,
                             color = downloadTextColor
                         )
@@ -747,32 +745,30 @@ private fun BiosPlatformItem(
             )
         }
 
-        if (!group.isComplete) {
-            val downloadBgColor = if (downloadSubFocused) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-            }
-            val downloadTextColor = if (downloadSubFocused) {
-                MaterialTheme.colorScheme.onPrimary
-            } else {
-                MaterialTheme.colorScheme.primary
-            }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(Dimens.radiusSm))
-                    .background(downloadBgColor)
-                    .clickableNoFocus { onDownload() }
-                    .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs)
-            ) {
-                Text(
-                    text = "Download",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = downloadTextColor
-                )
-            }
-            Spacer(modifier = Modifier.width(Dimens.spacingSm))
+        val downloadBgColor = if (downloadSubFocused) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
         }
+        val downloadTextColor = if (downloadSubFocused) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.primary
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(Dimens.radiusSm))
+                .background(downloadBgColor)
+                .clickableNoFocus { onDownload() }
+                .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs)
+        ) {
+            Text(
+                text = if (group.isComplete) "Redownload" else "Download",
+                style = MaterialTheme.typography.labelSmall,
+                color = downloadTextColor
+            )
+        }
+        Spacer(modifier = Modifier.width(Dimens.spacingSm))
 
         Icon(
             imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,

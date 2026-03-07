@@ -710,7 +710,7 @@ internal fun routeMoveBiosPlatformSubFocus(vm: SettingsViewModel, delta: Int): B
 
     if (item !is BiosItem.Platform) return false
 
-    return vm.biosDelegate.movePlatformSubFocus(delta, !item.group.isComplete)
+    return vm.biosDelegate.movePlatformSubFocus(delta, hasDownloadButton = true)
 }
 
 internal fun routeMoveBiosPathActionFocus(vm: SettingsViewModel, delta: Int): Boolean {
