@@ -345,7 +345,7 @@ class PlaySessionTracker @Inject constructor(
 
             broadcastSessionChanged(gameId, channelName, isHardcore)
 
-            if (isNewGame && game != null) {
+            if (isNewGame && game != null && game.playCount <= 1) {
                 socialRepository.get().emitStartedPlaying(
                     igdbId = game.igdbId,
                     gameTitle = game.title,

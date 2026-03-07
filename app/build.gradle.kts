@@ -89,7 +89,7 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             isDebuggable = true
-            buildConfigField("String", "SOCIAL_API_URL", "\"https://staging.argosy.dev/\"")
+            buildConfigField("String", "SOCIAL_API_URL", "\"https://api.argosy.dev/\"")
         }
     }
 
