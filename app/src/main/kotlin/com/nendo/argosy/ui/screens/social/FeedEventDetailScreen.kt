@@ -1023,7 +1023,7 @@ private fun parseTimestamp(timestamp: String): Instant {
 
 private fun formatEventDescription(event: FeedEventDto): String {
     return when (event.eventType) {
-        FeedEventType.STARTED_PLAYING -> "started playing"
+        FeedEventType.STARTED_PLAYING -> "First Play"
         FeedEventType.PLAY_MILESTONE -> {
             val hours = (event.payload?.get("total_hours") as? Number)?.toInt() ?: 0
             "reached $hours hours"
