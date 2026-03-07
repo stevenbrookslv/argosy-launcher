@@ -164,6 +164,20 @@ class HomeInputHandler(
         return InputResult.HANDLED
     }
 
+    override fun onPrevSection(): InputResult {
+        val state = actions.uiState.value
+        if (state.showAddToCollectionModal || state.showGameMenu) return InputResult.HANDLED
+        actions.previousRow()
+        return InputResult.handled(SoundType.SECTION_CHANGE)
+    }
+
+    override fun onNextSection(): InputResult {
+        val state = actions.uiState.value
+        if (state.showAddToCollectionModal || state.showGameMenu) return InputResult.HANDLED
+        actions.nextRow()
+        return InputResult.handled(SoundType.SECTION_CHANGE)
+    }
+
     override fun onContextMenu(): InputResult {
         val state = actions.uiState.value
         val game = state.focusedGame ?: return InputResult.UNHANDLED

@@ -231,9 +231,35 @@ data class HomeUiState(
             is HomeRow.PinnedVirtual -> currentRow.name
         }
 
+    fun shortLabelFor(row: HomeRow): String = when (row) {
+        HomeRow.Continue -> "Recent"
+        HomeRow.Recommendations -> "Picks"
+        HomeRow.Favorites -> "Favs"
+        HomeRow.Android -> "Android"
+        HomeRow.Steam -> "Steam"
+        is HomeRow.Platform -> platforms.getOrNull(row.index)?.shortName ?: "?"
+        is HomeRow.PinnedRegular -> row.name.take(6)
+        is HomeRow.PinnedVirtual -> row.name.take(6)
+    }
+
+    fun breadcrumbItems(maxNeighbors: Int = 2): List<BreadcrumbItem> {
+        val rows = availableRows
+        if (rows.isEmpty()) return emptyList()
+        val currentIdx = rows.indexOf(currentRow).coerceAtLeast(0)
+        return (-maxNeighbors..maxNeighbors).map { offset ->
+            val idx = (currentIdx + offset).mod(rows.size)
+            BreadcrumbItem(
+                label = shortLabelFor(rows[idx]),
+                isCurrent = idx == currentIdx
+            )
+        }
+    }
+
     fun downloadIndicatorFor(gameId: Long): GameDownloadIndicator =
         downloadIndicators[gameId] ?: GameDownloadIndicator.NONE
 }
+
+data class BreadcrumbItem(val label: String, val isCurrent: Boolean)
 
 sealed class HomeEvent {
     data class NavigateToLaunch(

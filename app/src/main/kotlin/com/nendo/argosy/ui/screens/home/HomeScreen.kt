@@ -10,7 +10,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -594,8 +596,9 @@ fun HomeScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.align(Alignment.TopCenter)) {
                 HomeHeader(
-                    sectionTitle = uiState.rowTitle,
-                    showPlatformNav = false,
+                    uiState = uiState,
+                    onPreviousRow = viewModel::previousRow,
+                    onNextRow = viewModel::nextRow,
                     headerOffset = videoModeHeaderOffset
                 )
             }
@@ -885,16 +888,19 @@ private fun SplashOverlay() {
 
 @Composable
 private fun HomeHeader(
-    sectionTitle: String,
-    showPlatformNav: Boolean,
+    uiState: HomeUiState,
+    onPreviousRow: () -> Unit,
+    onNextRow: () -> Unit,
     headerOffset: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     val aspectRatioClass = com.nendo.argosy.ui.theme.LocalUiScale.current.aspectRatioClass
-    val maxTitleLength = when (aspectRatioClass) {
-        com.nendo.argosy.ui.theme.AspectRatioClass.ULTRA_TALL -> 12
-        com.nendo.argosy.ui.theme.AspectRatioClass.TALL -> 16
-        else -> null
+    val maxNeighbors = when (aspectRatioClass) {
+        com.nendo.argosy.ui.theme.AspectRatioClass.ULTRA_TALL -> 1
+        else -> 2
     }
+    val rows = uiState.availableRows
+    val currentIdx = rows.indexOf(uiState.currentRow).coerceAtLeast(0)
+    val navIconTint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
 
     Row(
         modifier = Modifier
@@ -905,47 +911,71 @@ private fun HomeHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
+            modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Dimens.radiusLg)
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) {
-            AnimatedContent(
-                targetState = sectionTitle,
-                transitionSpec = {
-                    (slideInVertically { -it / 2 } + fadeIn(tween(200))) togetherWith
-                            (slideOutVertically { it / 2 } + fadeOut(tween(150)))
-                },
-                label = "section"
-            ) { title ->
-                val displayTitle = if (maxTitleLength != null && title.length > maxTitleLength) {
-                    title.take(maxTitleLength - 1) + "…"
-                } else {
-                    title
-                }
-                Text(
-                    text = displayTitle,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+            Row(
+                modifier = Modifier
+                    .clickableNoFocus(onClick = onPreviousRow)
+                    .padding(Dimens.spacingXs),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = InputIcons.BumperLeft,
+                    contentDescription = "Previous row",
+                    tint = navIconTint,
+                    modifier = Modifier.size(Dimens.iconSm)
                 )
             }
 
-            if (showPlatformNav) {
+            AnimatedContent(
+                targetState = currentIdx,
+                transitionSpec = {
+                    val forward = targetState > initialState ||
+                            (initialState == rows.lastIndex && targetState == 0)
+                    val sign = if (forward) 1 else -1
+                    (slideInHorizontally { sign * it / 3 } + fadeIn(tween(200))) togetherWith
+                            (slideOutHorizontally { -sign * it / 3 } + fadeOut(tween(150)))
+                },
+                label = "breadcrumb"
+            ) { _ ->
+                val breadcrumbs = uiState.breadcrumbItems(maxNeighbors)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
                 ) {
-                    Icon(
-                        painter = InputIcons.BumperLeft,
-                        contentDescription = "Previous platform",
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                        modifier = Modifier.size(Dimens.iconSm)
-                    )
-                    Icon(
-                        painter = InputIcons.BumperRight,
-                        contentDescription = "Next platform",
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                        modifier = Modifier.size(Dimens.iconSm)
-                    )
+                    breadcrumbs.forEachIndexed { index, item ->
+                        if (index > 0) {
+                            Text(
+                                text = "\u00B7",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                            )
+                        }
+                        Text(
+                            text = item.label,
+                            style = if (item.isCurrent) MaterialTheme.typography.titleMedium
+                                    else MaterialTheme.typography.labelMedium,
+                            color = if (item.isCurrent) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+                        )
+                    }
                 }
+            }
+
+            Row(
+                modifier = Modifier
+                    .clickableNoFocus(onClick = onNextRow)
+                    .padding(Dimens.spacingXs),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = InputIcons.BumperRight,
+                    contentDescription = "Next row",
+                    tint = navIconTint,
+                    modifier = Modifier.size(Dimens.iconSm)
+                )
             }
         }
 
