@@ -597,14 +597,14 @@ class GameLauncher @Inject constructor(
             addCategory(Intent.CATEGORY_DEFAULT)
 
             if (emulator.launchAction == Intent.ACTION_VIEW) {
-                val uri = if (config.useFileUri) {
-                    Uri.fromFile(romFile)
+                if (config.useFileUri) {
+                    putExtra("path", romFile.absolutePath)
+                    putExtra("file", romFile.absolutePath)
+                    putExtra("filePath", romFile.absolutePath)
                 } else {
-                    getFileUri(romFile)
-                }
-                val mimeType = config.mimeTypeOverride ?: getMimeType(romFile)
-                setDataAndType(uri, mimeType)
-                if (!config.useFileUri) {
+                    val uri = getFileUri(romFile)
+                    val mimeType = config.mimeTypeOverride ?: getMimeType(romFile)
+                    setDataAndType(uri, mimeType)
                     clipData = ClipData.newRawUri(null, uri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
@@ -854,8 +854,8 @@ class GameLauncher @Inject constructor(
                 Logger.debug(TAG, "FileProvider URI created for ${file.name}")
             }
         } catch (e: IllegalArgumentException) {
-            Logger.warn(TAG, "FileProvider failed for ${file.name}, using file:// URI", e)
-            Uri.fromFile(file)
+            Logger.error(TAG, "FileProvider failed for ${file.name}, file may not be launchable", e)
+            throw e
         }
     }
 
