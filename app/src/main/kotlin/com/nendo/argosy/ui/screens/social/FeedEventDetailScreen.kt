@@ -114,6 +114,7 @@ class FeedEventDetailViewModel @Inject constructor(
     val uiState: StateFlow<FeedEventDetailUiState> = _uiState.asStateFlow()
 
     fun loadEvent(eventId: String) {
+        socialRepository.getEvent(eventId)
         socialRepository.requestEventComments(eventId)
         viewModelScope.launch {
             combine(
