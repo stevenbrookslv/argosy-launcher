@@ -90,7 +90,7 @@ import com.nendo.argosy.data.local.entity.StateCacheEntity
         PlaySessionEntity::class,
         SocialGameCacheEntity::class
     ],
-    version = 83,
+    version = 84,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -1261,6 +1261,13 @@ abstract class ALauncherDatabase : RoomDatabase() {
                     WHERE (unlockedAt IS NOT NULL AND unlockedAt < $cutoff)
                        OR (unlockedHardcoreAt IS NOT NULL AND unlockedHardcoreAt < $cutoff)
                 """)
+            }
+        }
+
+        val MIGRATION_83_84 = object : Migration(83, 84) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE games ADD COLUMN verifiedRaId INTEGER")
+                db.execSQL("ALTER TABLE games ADD COLUMN raIdVerified INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

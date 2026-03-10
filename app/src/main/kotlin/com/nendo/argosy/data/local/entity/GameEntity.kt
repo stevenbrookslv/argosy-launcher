@@ -106,10 +106,15 @@ data class GameEntity(
 
     val romHash: String? = null,
 
+    val verifiedRaId: Long? = null,
+    val raIdVerified: Boolean = false,
+
     val fileSizeBytes: Long? = null,
 
     val syncDirty: Boolean = false
-)
+) {
+    val effectiveRaId: Long? get() = if (raIdVerified) verifiedRaId else (verifiedRaId ?: raId)
+}
 
 data class GameListItem(
     val id: Long,

@@ -10,6 +10,7 @@ import com.nendo.argosy.data.local.dao.AchievementDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.repository.RAAwardResult
 import com.nendo.argosy.data.repository.RetroAchievementsRepository
+import com.nendo.argosy.domain.usecase.achievement.VerifyRAGameIdUseCase
 import com.nendo.argosy.data.social.SocialRepository
 import com.nendo.argosy.hardware.AmbientLedManager
 import com.nendo.argosy.libretro.ui.AchievementUnlock
@@ -29,6 +30,7 @@ class RetroAchievementsSessionManager(
     private val gameDao: GameDao,
     private val achievementDao: AchievementDao,
     private val raRepository: RetroAchievementsRepository,
+    private val verifyRAGameIdUseCase: VerifyRAGameIdUseCase,
     private val achievementUpdateBus: AchievementUpdateBus,
     private val ambientLedManager: AmbientLedManager,
     private val socialRepository: SocialRepository,
@@ -72,10 +74,12 @@ class RetroAchievementsSessionManager(
             }
 
             val game = gameDao.getById(gameId) ?: return@launch
-            gameRaId = game.raId
             gameIgdbId = game.igdbId
             gameTitle = game.title
-            Log.d(TAG, "Game loaded: title=${game.title}, raId=$gameRaId")
+
+            val verifiedId = verifyRAGameIdUseCase(gameId, forceRehash = true)
+            gameRaId = verifiedId ?: game.effectiveRaId
+            Log.d(TAG, "Game loaded: title=${game.title}, resolvedRaId=$gameRaId, raId=${game.raId}, verifiedRaId=${game.verifiedRaId}")
 
             if (gameRaId == null) {
                 Log.d(TAG, "Game has no RA ID, skipping RA session")
@@ -91,23 +95,6 @@ class RetroAchievementsSessionManager(
 
                 val patchData = raRepository.getGamePatchData(gameRaId!!)
                 if (patchData != null) {
-                    val raConsoleId = patchData.consoleId ?: 0
-                    if (game.romHash == null && raConsoleId > 0) {
-                        try {
-                            val hash = com.swordfish.libretrodroid.LibretroDroid.computeRomHash(romPath, raConsoleId)
-                            if (hash != null) {
-                                Log.d(TAG, "Computed ROM hash: $hash")
-                                gameDao.updateRomHash(gameId, hash)
-                            } else {
-                                Log.w(TAG, "Failed to compute ROM hash for $romPath (console $raConsoleId)")
-                            }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error computing ROM hash", e)
-                        }
-                    } else if (game.romHash != null) {
-                        Log.d(TAG, "Using cached ROM hash: ${game.romHash}")
-                    }
-
                     val validAchievements = patchData.achievements?.filter { ach ->
                         !ach.title.contains("Unknown Emulator", ignoreCase = true) &&
                         !ach.title.contains("Emulator Warning", ignoreCase = true) &&
@@ -135,13 +122,14 @@ class RetroAchievementsSessionManager(
                     val toWatch = validAchievements
                         .filter { it.id !in preUnlocked }
 
-                    if (toWatch.isNotEmpty()) {
+                    val consoleId = patchData.consoleId
+                    if (toWatch.isNotEmpty() && consoleId != null) {
                         val achievementDefs = toWatch.map { patch ->
                             com.swordfish.libretrodroid.AchievementDef(patch.id, patch.memAddr)
                         }.toTypedArray()
 
-                        Log.d(TAG, "Sending ${achievementDefs.size} achievements to native for console $raConsoleId")
-                        com.swordfish.libretrodroid.LibretroDroid.initAchievements(achievementDefs, raConsoleId)
+                        Log.d(TAG, "Sending ${achievementDefs.size} achievements to native for console $consoleId")
+                        com.swordfish.libretrodroid.LibretroDroid.initAchievements(achievementDefs, consoleId)
 
                         retroView.achievementUnlockListener = { achievementId ->
                             onAchievementUnlocked(achievementId)

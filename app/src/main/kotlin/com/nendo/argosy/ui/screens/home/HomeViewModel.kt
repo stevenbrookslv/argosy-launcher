@@ -8,6 +8,7 @@ import com.nendo.argosy.data.preferences.BoxArtBorderStyle
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.download.DownloadManager
 import com.nendo.argosy.domain.model.RequiredAction
+import com.nendo.argosy.data.remote.ra.RAConsoleIds
 import com.nendo.argosy.domain.usecase.achievement.FetchAchievementsUseCase
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.SoundFeedbackManager
@@ -690,9 +691,9 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val entity = gameRepository.getById(game.id) ?: return@launch
             val rommId = entity.rommId
-            val raId = entity.raId
-            if (rommId == null && raId == null) return@launch
-            val counts = fetchAchievementsUseCase(game.id, rommId, raId) ?: return@launch
+            val raId = entity.effectiveRaId
+            if (rommId == null && raId == null && !RAConsoleIds.isSupported(entity.platformSlug)) return@launch
+            val counts = fetchAchievementsUseCase(gameId = game.id, rommId = rommId, raId = raId) ?: return@launch
             libraryDelegate.updateAchievementCounts(game.id, counts.total, counts.earned)
         }
     }

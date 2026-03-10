@@ -84,6 +84,17 @@ class RetroAchievementsRepository @Inject constructor(
         return RACredentials(username, token)
     }
 
+    suspend fun resolveGameId(hash: String): Long? {
+        val response = api.resolveGameId(hash = hash)
+        if (!response.isSuccessful) {
+            throw Exception("resolveGameId failed: HTTP ${response.code()}")
+        }
+        val body = response.body()?.string()
+            ?: throw Exception("resolveGameId: empty response body")
+        val gameId = body.trim().toLongOrNull() ?: 0
+        return if (gameId > 0) gameId else null
+    }
+
     suspend fun login(username: String, password: String): RALoginResult {
         Logger.debug(TAG, "Logging in to RetroAchievements")
         return try {

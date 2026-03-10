@@ -57,6 +57,12 @@ interface RAApi {
         @Query("f") flags: Int = 3
     ): Response<RAGameInfoResponse>
 
+    @GET("dorequest.php")
+    suspend fun resolveGameId(
+        @Query("r") request: String = "gameid",
+        @Query("m") hash: String
+    ): Response<okhttp3.ResponseBody>
+
     // Web API endpoint - uses API key instead of token, no emulator registration required
     @GET("API/API_GetGameInfoAndUserProgress.php")
     suspend fun getGameInfoAndUserProgress(

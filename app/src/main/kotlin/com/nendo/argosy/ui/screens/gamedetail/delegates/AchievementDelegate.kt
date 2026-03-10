@@ -10,6 +10,7 @@ import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.repository.RA_BADGE_BASE_URL
 import com.nendo.argosy.data.repository.RetroAchievementsRepository
+import com.nendo.argosy.domain.usecase.achievement.VerifyRAGameIdUseCase
 import com.nendo.argosy.ui.screens.common.AchievementUpdateBus
 import com.nendo.argosy.util.parseTimestamp
 import com.nendo.argosy.ui.screens.gamedetail.AchievementUi
@@ -28,7 +29,8 @@ class AchievementDelegate @Inject constructor(
     private val raRepository: RetroAchievementsRepository,
     private val romMRepository: RomMRepository,
     private val imageCacheManager: ImageCacheManager,
-    private val achievementUpdateBus: AchievementUpdateBus
+    private val achievementUpdateBus: AchievementUpdateBus,
+    private val verifyRAGameIdUseCase: VerifyRAGameIdUseCase
 ) {
     private val _achievements = MutableStateFlow<List<AchievementUi>>(emptyList())
     val achievements: StateFlow<List<AchievementUi>> = _achievements.asStateFlow()
@@ -36,9 +38,9 @@ class AchievementDelegate @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    suspend fun loadCached(gameId: Long, hasRommId: Boolean) {
+    suspend fun loadCached(gameId: Long, hasAchievementSource: Boolean) {
         val cached = achievementDao.getByGameId(gameId)
-        if (!hasRommId && cached.isEmpty()) {
+        if (!hasAchievementSource && cached.isEmpty()) {
             _achievements.value = emptyList()
             return
         }
@@ -58,10 +60,15 @@ class AchievementDelegate @Inject constructor(
 
     private suspend fun fetchAndCacheAchievements(rommId: Long?, gameId: Long): List<AchievementUi> {
         val game = gameRepository.getById(gameId)
-        val raId = game?.raId
 
-        if (raId != null && raRepository.isLoggedIn()) {
-            val raResults = fetchAchievementsFromRA(raId, gameId)
+        val effectiveRaId = if (raRepository.isLoggedIn()) {
+            verifyRAGameIdUseCase(gameId) ?: game?.raId
+        } else {
+            game?.raId
+        }
+
+        if (effectiveRaId != null && raRepository.isLoggedIn()) {
+            val raResults = fetchAchievementsFromRA(effectiveRaId, gameId)
             if (raResults.isNotEmpty()) return raResults
         }
 

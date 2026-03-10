@@ -19,15 +19,20 @@ data class AchievementCounts(
 class FetchAchievementsUseCase @Inject constructor(
     private val romMRepository: RomMRepository,
     private val raRepository: RetroAchievementsRepository,
+    private val verifyRAGameIdUseCase: VerifyRAGameIdUseCase,
     private val achievementDao: AchievementDao,
     private val gameDao: GameDao,
     private val imageCacheManager: ImageCacheManager
 ) {
     suspend operator fun invoke(gameId: Long, rommId: Long? = null, raId: Long? = null): AchievementCounts? {
-        if (rommId == null && raId == null) return null
+        val effectiveRaId = if (raRepository.isLoggedIn()) {
+            verifyRAGameIdUseCase(gameId) ?: raId
+        } else {
+            raId
+        }
 
-        if (raId != null && raRepository.isLoggedIn()) {
-            val result = fetchFromRA(raId, gameId)
+        if (effectiveRaId != null && raRepository.isLoggedIn()) {
+            val result = fetchFromRA(effectiveRaId, gameId)
             if (result != null) return result
         }
 

@@ -21,6 +21,7 @@ import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.hardware.CompanionGuardService
 import com.nendo.argosy.util.DisplayRoleResolver
 import com.nendo.argosy.domain.model.CompletionStatus
+import com.nendo.argosy.data.remote.ra.RAConsoleIds
 import com.nendo.argosy.domain.usecase.achievement.FetchAchievementsUseCase
 import com.nendo.argosy.domain.usecase.save.GetUnifiedSavesUseCase
 import com.nendo.argosy.domain.usecase.save.RestoreCachedSaveUseCase
@@ -308,8 +309,10 @@ class DualScreenManager(
                 val validated = validateShowcaseImagePaths(showcase)
                 _dualScreenShowcase.value = validated
                 val entity = gameDao.getById(gameId) ?: return@launch
-                val rommId = entity.rommId ?: return@launch
-                fetchAchievementsUseCase(rommId, gameId)
+                val rommId = entity.rommId
+                val raId = entity.effectiveRaId
+                if (rommId == null && raId == null && !RAConsoleIds.isSupported(entity.platformSlug)) return@launch
+                fetchAchievementsUseCase(gameId = gameId, rommId = rommId, raId = raId)
             }
         } else {
             _dualScreenShowcase.value = showcase

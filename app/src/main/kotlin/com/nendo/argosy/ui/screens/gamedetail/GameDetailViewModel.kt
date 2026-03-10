@@ -17,6 +17,7 @@ import com.nendo.argosy.data.local.dao.GameDiscDao
 import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.remote.ra.RAConsoleIds
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.repository.GameRepository
@@ -415,7 +416,7 @@ class GameDetailViewModel @Inject constructor(
             }
             val currentIndex = gameNavigationContext.getIndex(gameId)
 
-            achievementDelegate.loadCached(gameId, game.rommId != null)
+            achievementDelegate.loadCached(gameId, game.rommId != null || game.effectiveRaId != null)
             val cachedAchievements = achievementDelegate.achievements.value
 
             val emulatorId = emulatorResolver.getEmulatorIdForGame(gameId, game.platformId, game.platformSlug)
@@ -472,7 +473,7 @@ class GameDetailViewModel @Inject constructor(
                 )
             }
 
-            if (game.rommId != null || game.raId != null) {
+            if (game.rommId != null || game.effectiveRaId != null || RAConsoleIds.isSupported(game.platformSlug)) {
                 refreshAchievementsInBackground(game.rommId, gameId)
             }
 

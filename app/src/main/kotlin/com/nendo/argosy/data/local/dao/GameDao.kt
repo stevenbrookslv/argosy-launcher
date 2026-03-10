@@ -438,6 +438,9 @@ interface GameDao {
     @Query("SELECT romHash FROM games WHERE id = :gameId")
     suspend fun getRomHash(gameId: Long): String?
 
+    @Query("UPDATE games SET verifiedRaId = :raId, raIdVerified = 1 WHERE id = :gameId")
+    suspend fun updateVerifiedRaId(gameId: Long, raId: Long?)
+
     @Query("UPDATE games SET earnedAchievementCount = earnedAchievementCount + 1 WHERE id = :gameId")
     suspend fun incrementEarnedAchievementCount(gameId: Long)
 

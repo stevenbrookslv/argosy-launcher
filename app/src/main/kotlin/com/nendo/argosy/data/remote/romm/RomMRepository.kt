@@ -31,7 +31,8 @@ class RomMRepository @Inject constructor(
         connectionManager.initialize()
         if (connectionManager.isConnected()) {
             val prefs = userPreferencesRepository.preferences.first()
-            if (prefs.rommToken != null) {
+            val hasRAAuth = !prefs.raUsername.isNullOrBlank() && !prefs.raToken.isNullOrBlank()
+            if (prefs.rommToken != null && !hasRAAuth) {
                 achievementService.refreshRAProgressionOnStartup()
             }
         }

@@ -106,6 +106,7 @@ class LibretroActivity : ComponentActivity() {
     @Inject lateinit var achievementDao: AchievementDao
     @Inject lateinit var cheatsRepository: CheatsRepository
     @Inject lateinit var raRepository: RetroAchievementsRepository
+    @Inject lateinit var verifyRAGameIdUseCase: com.nendo.argosy.domain.usecase.achievement.VerifyRAGameIdUseCase
     @Inject lateinit var achievementUpdateBus: AchievementUpdateBus
     @Inject lateinit var saveCacheManager: SaveCacheManager
     @Inject lateinit var ambientLedManager: AmbientLedManager
@@ -721,6 +722,7 @@ class LibretroActivity : ComponentActivity() {
             gameDao = gameDao,
             achievementDao = achievementDao,
             raRepository = raRepository,
+            verifyRAGameIdUseCase = verifyRAGameIdUseCase,
             achievementUpdateBus = achievementUpdateBus,
             ambientLedManager = ambientLedManager,
             socialRepository = socialRepository,
