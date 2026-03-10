@@ -53,7 +53,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
     val state = vm._uiState.value
     return when (state.currentSection) {
         SettingsSection.MAIN -> {
-            val item = mainSettingsItemAtFocusIndex(state.focusedIndex, state.emulators.builtinLibretroEnabled)
+            val item = mainSettingsItemAtFocusIndex(state.focusedIndex)
             when (item) {
                 MainSettingsItem.DeviceSettings -> vm.viewModelScope.launch { vm._openDeviceSettingsEvent.emit(Unit) }
                 MainSettingsItem.GameData -> vm.navigateToSection(SettingsSection.SERVER)
@@ -603,7 +603,7 @@ private fun computeMaxFocusIndex(
     state: SettingsUiState,
     isConnected: Boolean
 ): Int = when (state.currentSection) {
-    SettingsSection.MAIN -> mainSettingsMaxFocusIndex(state.emulators.builtinLibretroEnabled)
+    SettingsSection.MAIN -> mainSettingsMaxFocusIndex()
     SettingsSection.SERVER -> if (state.server.rommConfiguring) {
         4
     } else {
