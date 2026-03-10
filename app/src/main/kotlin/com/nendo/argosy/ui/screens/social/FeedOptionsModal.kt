@@ -2,10 +2,11 @@ package com.nendo.argosy.ui.screens.social
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Brush
+import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Report
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.Composable
@@ -13,7 +14,8 @@ import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.screens.gamedetail.components.OptionItem
 
 enum class FeedOption {
-    CREATE_DOODLE,
+    CREATE_POST,
+    FIND_COMMUNITIES,
     VIEW_PROFILE,
     SHARE_SCREENSHOT,
     REPORT_POST,
@@ -32,17 +34,28 @@ fun FeedOptionsModal(
     focusIndex: Int,
     userName: String?,
     hasEvent: Boolean,
+    isCommunityMode: Boolean = false,
     onAction: (FeedOption) -> Unit,
     onDismiss: () -> Unit
 ) {
     Modal(title = "Options", onDismiss = onDismiss) {
         var currentIndex = 0
 
+        if (isCommunityMode) {
+            OptionItem(
+                icon = Icons.Default.Search,
+                label = "Find Communities",
+                isFocused = focusIndex == currentIndex,
+                onClick = { onAction(FeedOption.FIND_COMMUNITIES) }
+            )
+            currentIndex++
+        }
+
         OptionItem(
-            icon = Icons.Default.Brush,
-            label = "Create Doodle",
+            icon = Icons.Default.Create,
+            label = "Create Post",
             isFocused = focusIndex == currentIndex,
-            onClick = { onAction(FeedOption.CREATE_DOODLE) }
+            onClick = { onAction(FeedOption.CREATE_POST) }
         )
         currentIndex++
 

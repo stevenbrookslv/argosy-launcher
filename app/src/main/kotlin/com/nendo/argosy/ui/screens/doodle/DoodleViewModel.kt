@@ -1,33 +1,34 @@
 package com.nendo.argosy.ui.screens.doodle
 
-import android.util.Log
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.local.dao.GameDao
-import com.nendo.argosy.data.social.SocialRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
 sealed class DoodleEvent {
-    data object Posted : DoodleEvent()
+    data class Done(
+        val doodleData: String,
+        val canvasSize: Int,
+        val gameId: Int?,
+        val gameTitle: String?,
+        val gameCoverPath: String?
+    ) : DoodleEvent()
     data class Error(val message: String) : DoodleEvent()
 }
 
 @HiltViewModel
 class DoodleViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
-    private val socialRepository: SocialRepository,
     private val gameDao: GameDao
 ) : ViewModel() {
 
@@ -36,14 +37,6 @@ class DoodleViewModel @Inject constructor(
 
     private val _events = MutableSharedFlow<DoodleEvent>()
     val events = _events.asSharedFlow()
-
-    init {
-        val gameId = savedStateHandle.get<String>("gameId")?.toIntOrNull()
-        val gameTitle = savedStateHandle.get<String>("gameTitle")
-        if (gameId != null) {
-            _uiState.update { it.copy(linkedGameId = gameId, linkedGameTitle = gameTitle) }
-        }
-    }
 
     fun moveCursor(dx: Int, dy: Int) {
         _uiState.update { state ->
@@ -59,6 +52,7 @@ class DoodleViewModel @Inject constructor(
     }
 
     fun drawAtCursor() {
+        pushUndoSnapshot()
         _uiState.update { state ->
             when (state.selectedTool) {
                 DoodleTool.PEN -> {
@@ -181,8 +175,9 @@ class DoodleViewModel @Inject constructor(
             val next = when (state.currentSection) {
                 DoodleSection.CANVAS -> DoodleSection.PALETTE
                 DoodleSection.PALETTE -> DoodleSection.SIZE
-                DoodleSection.SIZE -> DoodleSection.CAPTION
-                DoodleSection.CAPTION -> DoodleSection.GAME
+                DoodleSection.SIZE -> DoodleSection.UNDO
+                DoodleSection.UNDO -> DoodleSection.REDO
+                DoodleSection.REDO -> DoodleSection.GAME
                 DoodleSection.GAME -> DoodleSection.CANVAS
             }
             state.copy(currentSection = next)
@@ -195,8 +190,9 @@ class DoodleViewModel @Inject constructor(
                 DoodleSection.CANVAS -> DoodleSection.GAME
                 DoodleSection.PALETTE -> DoodleSection.CANVAS
                 DoodleSection.SIZE -> DoodleSection.PALETTE
-                DoodleSection.CAPTION -> DoodleSection.SIZE
-                DoodleSection.GAME -> DoodleSection.CAPTION
+                DoodleSection.UNDO -> DoodleSection.SIZE
+                DoodleSection.REDO -> DoodleSection.UNDO
+                DoodleSection.GAME -> DoodleSection.REDO
             }
             state.copy(currentSection = prev)
         }
@@ -231,11 +227,6 @@ class DoodleViewModel @Inject constructor(
         }
     }
 
-    fun setCaption(caption: String) {
-        val trimmed = caption.take(MAX_CAPTION_LENGTH)
-        _uiState.update { it.copy(caption = trimmed) }
-    }
-
     fun cycleZoom() {
         _uiState.update { state ->
             val newZoom = state.zoomLevel.next()
@@ -252,35 +243,6 @@ class DoodleViewModel @Inject constructor(
                 panOffsetX = state.panOffsetX + dx,
                 panOffsetY = state.panOffsetY + dy
             )
-        }
-    }
-
-    fun showPostMenu() {
-        _uiState.update { it.copy(showPostMenu = true, postMenuFocusIndex = 0) }
-    }
-
-    fun hidePostMenu() {
-        _uiState.update { it.copy(showPostMenu = false) }
-    }
-
-    fun movePostMenuFocus(delta: Int) {
-        _uiState.update { state ->
-            val newIndex = (state.postMenuFocusIndex + delta).coerceIn(0, 1)
-            state.copy(postMenuFocusIndex = newIndex)
-        }
-    }
-
-    fun confirmPostMenuSelection(): Boolean {
-        val state = _uiState.value
-        return when (state.postMenuFocusIndex) {
-            0 -> {
-                post()
-                true
-            }
-            else -> {
-                hidePostMenu()
-                false
-            }
         }
     }
 
@@ -304,7 +266,48 @@ class DoodleViewModel @Inject constructor(
         return state.discardDialogFocusIndex == 0
     }
 
+    private fun pushUndoSnapshot() {
+        _uiState.update { state ->
+            val newStack = if (state.undoStack.size >= MAX_UNDO_STACK) {
+                state.undoStack.drop(1) + state.pixels
+            } else {
+                state.undoStack + listOf(state.pixels)
+            }
+            state.copy(undoStack = newStack, redoStack = emptyList())
+        }
+    }
+
+    fun undo() {
+        _uiState.update { state ->
+            val snapshot = state.undoStack.lastOrNull() ?: return@update state
+            state.copy(
+                pixels = snapshot,
+                undoStack = state.undoStack.dropLast(1),
+                redoStack = state.redoStack + listOf(state.pixels)
+            )
+        }
+    }
+
+    fun redo() {
+        _uiState.update { state ->
+            val snapshot = state.redoStack.lastOrNull() ?: return@update state
+            state.copy(
+                pixels = snapshot,
+                redoStack = state.redoStack.dropLast(1),
+                undoStack = state.undoStack + listOf(state.pixels)
+            )
+        }
+    }
+
     private var gameSearchJob: Job? = null
+
+    fun initGame(gameId: Int?, gameTitle: String?, gameCoverPath: String?) {
+        if (gameId != null) {
+            _uiState.update {
+                it.copy(linkedGameId = gameId, linkedGameTitle = gameTitle, linkedGameCoverPath = gameCoverPath)
+            }
+        }
+    }
 
     fun showGamePicker() {
         _uiState.update {
@@ -324,15 +327,7 @@ class DoodleViewModel @Inject constructor(
 
     fun hideGamePicker() {
         gameSearchJob?.cancel()
-        _uiState.update {
-            it.copy(
-                showGamePicker = false,
-                gamePickerQuery = "",
-                gamePickerResults = emptyList(),
-                gamePickerFocusIndex = 0,
-                gamePickerSearchFocused = true
-            )
-        }
+        _uiState.update { it.copy(showGamePicker = false) }
     }
 
     fun focusGamePickerSearch() {
@@ -400,47 +395,33 @@ class DoodleViewModel @Inject constructor(
         coverPath = coverPath
     )
 
-    fun post() {
+    fun done() {
         val state = _uiState.value
         if (state.pixels.isEmpty()) {
             viewModelScope.launch {
-                _events.emit(DoodleEvent.Error("Cannot post an empty doodle"))
+                _events.emit(DoodleEvent.Error("Cannot save an empty doodle"))
             }
             return
         }
-
-        _uiState.update { it.copy(isPosting = true, showPostMenu = false) }
-
+        val base64Data = DoodleEncoder.encodeToBase64(state.pixels, state.canvasSize)
         viewModelScope.launch {
-            try {
-                val base64Data = DoodleEncoder.encodeToBase64(state.pixels, state.canvasSize)
-                Log.d(TAG, "Posting doodle: size=${state.canvasSize.pixels}x${state.canvasSize.pixels}, data=${base64Data.length} chars")
-
-                socialRepository.createDoodle(
-                    canvasSize = state.canvasSize.pixels,
-                    data = base64Data,
-                    caption = state.caption.takeIf { it.isNotBlank() },
-                    igdbId = state.linkedGameId,
-                    gameTitle = state.linkedGameTitle
-                )
-
-                _uiState.update { it.copy(isPosting = false) }
-                _events.emit(DoodleEvent.Posted)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to post doodle", e)
-                _uiState.update { it.copy(isPosting = false) }
-                _events.emit(DoodleEvent.Error("Failed to post doodle"))
-            }
+            _events.emit(DoodleEvent.Done(
+                doodleData = base64Data,
+                canvasSize = state.canvasSize.pixels,
+                gameId = state.linkedGameId,
+                gameTitle = state.linkedGameTitle,
+                gameCoverPath = state.linkedGameCoverPath
+            ))
         }
     }
 
     fun clearCanvas() {
+        pushUndoSnapshot()
         _uiState.update { it.copy(pixels = emptyMap(), lineStartX = null, lineStartY = null) }
     }
 
     companion object {
-        private const val TAG = "DoodleViewModel"
-        private const val MAX_CAPTION_LENGTH = 200
+        private const val MAX_UNDO_STACK = 50
         private const val SEARCH_DEBOUNCE_MS = 250L
     }
 }

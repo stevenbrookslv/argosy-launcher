@@ -3,7 +3,9 @@ package com.nendo.argosy.ui.screens.social
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.data.social.CommunityFollow
 import com.nendo.argosy.data.social.FeedEventDto
 import com.nendo.argosy.data.social.Friend
 import com.nendo.argosy.data.social.SocialConnectionState
@@ -13,32 +15,42 @@ import com.nendo.argosy.data.social.SocialUser
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.notification.NotificationManager
 import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.screens.doodle.GamePickerItem
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val TAG = "SocialViewModel"
 
 enum class SocialTab { FEED, FRIENDS, NOTIFICATIONS, PROFILE }
+enum class FeedMode { FRIENDS, COMMUNITY }
 
 private const val PROFILE_TOGGLE_COUNT = 5
 
 data class SocialUiState(
     val connectionState: SocialConnectionState = SocialConnectionState.Disconnected,
     val selectedTab: SocialTab = SocialTab.FEED,
+    val feedMode: FeedMode = FeedMode.FRIENDS,
     val events: List<FeedEventDto> = emptyList(),
+    val communityEvents: List<FeedEventDto> = emptyList(),
     val friends: List<Friend> = emptyList(),
     val notifications: List<SocialNotification> = emptyList(),
+    val communityFollows: List<CommunityFollow> = emptyList(),
     val focusedEventIndex: Int = 0,
     val focusedFriendIndex: Int = 0,
     val focusedNotificationIndex: Int = 0,
     val profileFocusIndex: Int = 0,
     val isLoading: Boolean = false,
     val hasMore: Boolean = false,
+    val isCommunityLoading: Boolean = false,
+    val communityHasMore: Boolean = false,
     val unreadCount: Int = 0,
     val isLoadingNotifications: Boolean = false,
     val notificationsHasMore: Boolean = false,
@@ -46,7 +58,12 @@ data class SocialUiState(
     val socialShowNowPlaying: Boolean = true,
     val socialNotifyFriendOnline: Boolean = true,
     val socialNotifyFriendPlaying: Boolean = true,
-    val socialSuppressNotificationsInGame: Boolean = false
+    val socialSuppressNotificationsInGame: Boolean = false,
+    val showCommunitySearch: Boolean = false,
+    val communitySearchQuery: String = "",
+    val communitySearchResults: List<GamePickerItem> = emptyList(),
+    val communitySearchFocusIndex: Int = 0,
+    val communitySearchFieldFocused: Boolean = true
 ) {
     val isConnected: Boolean
         get() = connectionState is SocialConnectionState.Connected
@@ -54,8 +71,17 @@ data class SocialUiState(
     val connectedUser: SocialUser?
         get() = (connectionState as? SocialConnectionState.Connected)?.user
 
+    val activeFeedEvents: List<FeedEventDto>
+        get() = if (feedMode == FeedMode.COMMUNITY) communityEvents else events
+
+    val activeFeedLoading: Boolean
+        get() = if (feedMode == FeedMode.COMMUNITY) isCommunityLoading else isLoading
+
+    val activeFeedHasMore: Boolean
+        get() = if (feedMode == FeedMode.COMMUNITY) communityHasMore else hasMore
+
     val focusedEvent: FeedEventDto?
-        get() = events.getOrNull(focusedEventIndex)
+        get() = activeFeedEvents.getOrNull(focusedEventIndex)
 
     val focusedNotification: SocialNotification?
         get() = notifications.getOrNull(focusedNotificationIndex)
@@ -65,10 +91,12 @@ data class SocialUiState(
 class SocialViewModel @Inject constructor(
     private val socialRepository: SocialRepository,
     private val preferencesRepository: UserPreferencesRepository,
+    private val gameDao: GameDao,
     val notificationManager: NotificationManager
 ) : ViewModel() {
 
     val feedOptionsDelegate = FeedOptionsDelegate()
+    private var communitySearchJob: Job? = null
 
     private val _uiState = MutableStateFlow(SocialUiState())
     val uiState: StateFlow<SocialUiState> = _uiState.asStateFlow()
@@ -133,6 +161,34 @@ class SocialViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            combine(
+                socialRepository.communityFeed,
+                socialRepository.communityFollows,
+                socialRepository.isLoadingCommunityFeed,
+                socialRepository.communityFeedHasMore
+            ) { communityEvents, follows, loading, hasMore ->
+                data class CommunityState(
+                    val events: List<FeedEventDto>,
+                    val follows: List<CommunityFollow>,
+                    val loading: Boolean,
+                    val hasMore: Boolean
+                )
+                CommunityState(communityEvents, follows, loading, hasMore)
+            }.collect { cs ->
+                val current = _uiState.value
+                _uiState.value = current.copy(
+                    communityEvents = cs.events,
+                    communityFollows = cs.follows,
+                    isCommunityLoading = cs.loading,
+                    communityHasMore = cs.hasMore,
+                    focusedEventIndex = if (current.feedMode == FeedMode.COMMUNITY) {
+                        current.focusedEventIndex.coerceIn(0, cs.events.size.coerceAtLeast(1) - 1)
+                    } else current.focusedEventIndex
+                )
+            }
+        }
+
+        viewModelScope.launch {
             preferencesRepository.userPreferences.collect { prefs ->
                 _uiState.value = _uiState.value.copy(
                     socialOnlineStatus = prefs.socialOnlineStatusEnabled,
@@ -146,9 +202,107 @@ class SocialViewModel @Inject constructor(
     }
 
     fun loadFeed() {
-        Log.d(TAG, "loadFeed: global feed")
-        socialRepository.requestFeed()
+        val state = _uiState.value
+        if (state.feedMode == FeedMode.COMMUNITY) {
+            Log.d(TAG, "loadFeed: community feed")
+            socialRepository.requestCommunityFeed()
+        } else {
+            Log.d(TAG, "loadFeed: friends feed")
+            socialRepository.requestFeed()
+        }
     }
+
+    fun toggleFeedMode() {
+        val current = _uiState.value
+        val newMode = if (current.feedMode == FeedMode.FRIENDS) FeedMode.COMMUNITY else FeedMode.FRIENDS
+        Log.d(TAG, "toggleFeedMode: ${current.feedMode} -> $newMode")
+        _uiState.value = current.copy(feedMode = newMode, focusedEventIndex = 0)
+        if (newMode == FeedMode.COMMUNITY && current.communityEvents.isEmpty()) {
+            socialRepository.requestCommunityFeed()
+            socialRepository.requestCommunityFollows()
+        }
+    }
+
+    fun showCommunitySearch() {
+        _uiState.value = _uiState.value.copy(
+            showCommunitySearch = true,
+            communitySearchQuery = "",
+            communitySearchResults = emptyList(),
+            communitySearchFocusIndex = 0,
+            communitySearchFieldFocused = true
+        )
+        viewModelScope.launch {
+            val recent = gameDao.getRecentlyPlayed(10)
+            _uiState.value = _uiState.value.copy(
+                communitySearchResults = recent.map { it.toPickerItem() }
+            )
+        }
+    }
+
+    fun hideCommunitySearch() {
+        _uiState.value = _uiState.value.copy(showCommunitySearch = false)
+        communitySearchJob?.cancel()
+    }
+
+    fun updateCommunitySearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(
+            communitySearchQuery = query,
+            communitySearchFocusIndex = 0
+        )
+        communitySearchJob?.cancel()
+        if (query.isBlank()) {
+            viewModelScope.launch {
+                val recent = gameDao.getRecentlyPlayed(10)
+                _uiState.value = _uiState.value.copy(
+                    communitySearchResults = recent.map { it.toPickerItem() }
+                )
+            }
+            return
+        }
+        communitySearchJob = viewModelScope.launch {
+            delay(300)
+            val results = gameDao.searchForQuickMenu(query, 15).first()
+            _uiState.value = _uiState.value.copy(
+                communitySearchResults = results.map { it.toPickerItem() }
+            )
+        }
+    }
+
+    fun moveCommunitySearchFocus(delta: Int) {
+        val state = _uiState.value
+        val maxIndex = state.communitySearchResults.size - 1
+        if (maxIndex < 0) return
+        val newIndex = (state.communitySearchFocusIndex + delta).coerceIn(0, maxIndex)
+        _uiState.value = state.copy(communitySearchFocusIndex = newIndex)
+    }
+
+    fun focusCommunitySearchField() {
+        _uiState.value = _uiState.value.copy(communitySearchFieldFocused = true)
+    }
+
+    fun focusCommunitySearchList() {
+        _uiState.value = _uiState.value.copy(
+            communitySearchFieldFocused = false,
+            communitySearchFocusIndex = 0
+        )
+    }
+
+    fun toggleCommunityFollow(igdbId: Int) {
+        val isFollowed = _uiState.value.communityFollows.any { it.igdbGameId == igdbId }
+        if (isFollowed) {
+            socialRepository.unfollowCommunity(igdbId)
+        } else {
+            socialRepository.followCommunity(igdbId)
+        }
+    }
+
+    private fun com.nendo.argosy.data.local.entity.GameEntity.toPickerItem() = GamePickerItem(
+        id = id,
+        igdbId = igdbId?.toInt(),
+        title = title,
+        platform = platformSlug,
+        coverPath = coverPath
+    )
 
     fun refresh() {
         Log.d(TAG, "refresh: resetting focusIndex and reloading")
@@ -170,7 +324,7 @@ class SocialViewModel @Inject constructor(
 
     private fun moveFocus(delta: Int): Boolean {
         val state = _uiState.value
-        val events = state.events
+        val events = state.activeFeedEvents
         if (events.isEmpty()) {
             Log.v(TAG, "moveFocus: no events")
             return false
@@ -183,9 +337,13 @@ class SocialViewModel @Inject constructor(
             Log.v(TAG, "moveFocus: $currentIndex -> $newIndex (of ${events.size})")
             _uiState.value = state.copy(focusedEventIndex = newIndex)
 
-            if (newIndex >= events.size - 3 && state.hasMore && !state.isLoading) {
+            if (newIndex >= events.size - 3 && state.activeFeedHasMore && !state.activeFeedLoading) {
                 Log.d(TAG, "moveFocus: near end (index $newIndex of ${events.size}), triggering loadMore")
-                socialRepository.loadMoreFeed()
+                if (state.feedMode == FeedMode.COMMUNITY) {
+                    socialRepository.loadMoreCommunityFeed()
+                } else {
+                    socialRepository.loadMoreFeed()
+                }
             }
             return true
         }
@@ -313,7 +471,7 @@ class SocialViewModel @Inject constructor(
     fun createInputHandler(
         onBack: () -> Unit,
         onOpenEventDetail: (String) -> Unit,
-        onCreateDoodle: () -> Unit,
+        onCreatePost: () -> Unit,
         onViewProfile: (String) -> Unit,
         onShareScreenshot: () -> Unit,
         onDrawerToggle: () -> Unit
@@ -321,17 +479,28 @@ class SocialViewModel @Inject constructor(
 
         private fun focusedUserName(): String? = _uiState.value.focusedEvent?.user?.displayName
         private fun hasEvent(): Boolean = _uiState.value.focusedEvent != null
+        private fun isCommunityMode(): Boolean = _uiState.value.feedMode == FeedMode.COMMUNITY
         private fun anyModalShowing(): Boolean = with(feedOptionsDelegate.state.value) {
             showOptionsModal || showReportReasonModal
-        }
+        } || _uiState.value.showCommunitySearch
 
         override fun onUp(): InputResult {
             val delegateState = feedOptionsDelegate.state.value
+            val state = _uiState.value
             return when {
+                state.showCommunitySearch && !state.communitySearchFieldFocused -> {
+                    if (state.communitySearchFocusIndex == 0) {
+                        focusCommunitySearchField()
+                    } else {
+                        moveCommunitySearchFocus(-1)
+                    }
+                    InputResult.HANDLED
+                }
+                state.showCommunitySearch -> InputResult.HANDLED
                 delegateState.showReportReasonModal ->
                     if (feedOptionsDelegate.moveReportReasonFocus(-1)) InputResult.HANDLED else InputResult.UNHANDLED
                 delegateState.showOptionsModal ->
-                    if (feedOptionsDelegate.moveOptionsFocus(-1, focusedUserName(), hasEvent())) InputResult.HANDLED else InputResult.UNHANDLED
+                    if (feedOptionsDelegate.moveOptionsFocus(-1, focusedUserName(), hasEvent(), isCommunityMode())) InputResult.HANDLED else InputResult.UNHANDLED
                 else -> when (_uiState.value.selectedTab) {
                     SocialTab.FEED -> if (moveFocus(-1)) InputResult.HANDLED else InputResult.UNHANDLED
                     SocialTab.FRIENDS -> if (moveFriendFocus(-1)) InputResult.HANDLED else InputResult.UNHANDLED
@@ -343,11 +512,20 @@ class SocialViewModel @Inject constructor(
 
         override fun onDown(): InputResult {
             val delegateState = feedOptionsDelegate.state.value
+            val state = _uiState.value
             return when {
+                state.showCommunitySearch && state.communitySearchFieldFocused -> {
+                    focusCommunitySearchList()
+                    InputResult.HANDLED
+                }
+                state.showCommunitySearch -> {
+                    moveCommunitySearchFocus(1)
+                    InputResult.HANDLED
+                }
                 delegateState.showReportReasonModal ->
                     if (feedOptionsDelegate.moveReportReasonFocus(1)) InputResult.HANDLED else InputResult.UNHANDLED
                 delegateState.showOptionsModal ->
-                    if (feedOptionsDelegate.moveOptionsFocus(1, focusedUserName(), hasEvent())) InputResult.HANDLED else InputResult.UNHANDLED
+                    if (feedOptionsDelegate.moveOptionsFocus(1, focusedUserName(), hasEvent(), isCommunityMode())) InputResult.HANDLED else InputResult.UNHANDLED
                 else -> when (_uiState.value.selectedTab) {
                     SocialTab.FEED -> if (moveFocus(1)) InputResult.HANDLED else InputResult.UNHANDLED
                     SocialTab.FRIENDS -> if (moveFriendFocus(1)) InputResult.HANDLED else InputResult.UNHANDLED
@@ -368,6 +546,18 @@ class SocialViewModel @Inject constructor(
         }
 
         override fun onConfirm(): InputResult {
+            val state = _uiState.value
+            if (state.showCommunitySearch) {
+                if (!state.communitySearchFieldFocused) {
+                    val item = state.communitySearchResults.getOrNull(state.communitySearchFocusIndex)
+                    item?.igdbId?.let {
+                        toggleCommunityFollow(it)
+                        hideCommunitySearch()
+                    }
+                }
+                return InputResult.HANDLED
+            }
+
             val delegateState = feedOptionsDelegate.state.value
 
             if (delegateState.showReportReasonModal) {
@@ -382,13 +572,15 @@ class SocialViewModel @Inject constructor(
                 val focusedEvent = _uiState.value.focusedEvent
                 val selectedOption = feedOptionsDelegate.resolveOptionAction(
                     focusedEvent?.user?.displayName,
-                    focusedEvent != null
+                    focusedEvent != null,
+                    isCommunityMode()
                 )
                 Log.d(TAG, "onConfirm (modal): selectedOption=$selectedOption")
                 feedOptionsDelegate.hideOptionsModal()
 
                 when (selectedOption) {
-                    FeedOption.CREATE_DOODLE -> onCreateDoodle()
+                    FeedOption.CREATE_POST -> onCreatePost()
+                    FeedOption.FIND_COMMUNITIES -> showCommunitySearch()
                     FeedOption.VIEW_PROFILE -> focusedEvent?.user?.id?.let { onViewProfile(it) }
                     FeedOption.SHARE_SCREENSHOT -> onShareScreenshot()
                     FeedOption.REPORT_POST -> feedOptionsDelegate.showReportReasonModal()
@@ -433,6 +625,10 @@ class SocialViewModel @Inject constructor(
         }
 
         override fun onBack(): InputResult {
+            if (_uiState.value.showCommunitySearch) {
+                hideCommunitySearch()
+                return InputResult.HANDLED
+            }
             val delegateState = feedOptionsDelegate.state.value
             if (delegateState.showReportReasonModal) {
                 feedOptionsDelegate.hideReportReasonModal()
@@ -479,7 +675,14 @@ class SocialViewModel @Inject constructor(
             return InputResult.HANDLED
         }
 
-        override fun onContextMenu(): InputResult = InputResult.UNHANDLED
+        override fun onContextMenu(): InputResult {
+            if (anyModalShowing()) return InputResult.UNHANDLED
+            if (_uiState.value.selectedTab == SocialTab.FEED) {
+                toggleFeedMode()
+                return InputResult.HANDLED
+            }
+            return InputResult.UNHANDLED
+        }
 
         override fun onPrevSection(): InputResult {
             if (anyModalShowing()) return InputResult.UNHANDLED

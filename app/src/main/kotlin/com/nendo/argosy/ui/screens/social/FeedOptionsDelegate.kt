@@ -25,8 +25,8 @@ class FeedOptionsDelegate {
         _state.update { it.copy(showOptionsModal = false) }
     }
 
-    fun moveOptionsFocus(delta: Int, userName: String?, hasEvent: Boolean): Boolean {
-        val maxIndex = getOptionCount(userName, hasEvent) - 1
+    fun moveOptionsFocus(delta: Int, userName: String?, hasEvent: Boolean, isCommunityMode: Boolean = false): Boolean {
+        val maxIndex = getOptionCount(userName, hasEvent, isCommunityMode) - 1
         val current = _state.value.optionsModalFocusIndex
         val newIndex = (current + delta).coerceIn(0, maxIndex)
         if (newIndex != current) {
@@ -36,18 +36,20 @@ class FeedOptionsDelegate {
         return false
     }
 
-    fun resolveOptionAction(userName: String?, hasEvent: Boolean): FeedOption? {
+    fun resolveOptionAction(userName: String?, hasEvent: Boolean, isCommunityMode: Boolean = false): FeedOption? {
         val index = _state.value.optionsModalFocusIndex
 
         var currentIdx = 0
-        val createDoodleIdx = currentIdx++
+        val findCommunitiesIdx = if (isCommunityMode) currentIdx++ else -1
+        val createPostIdx = currentIdx++
         val viewProfileIdx = if (userName != null && hasEvent) currentIdx++ else -1
         val shareScreenshotIdx = if (hasEvent) currentIdx++ else -1
         val reportPostIdx = if (hasEvent) currentIdx++ else -1
         val hidePostIdx = if (hasEvent) currentIdx++ else -1
 
         return when (index) {
-            createDoodleIdx -> FeedOption.CREATE_DOODLE
+            createPostIdx -> FeedOption.CREATE_POST
+            findCommunitiesIdx -> FeedOption.FIND_COMMUNITIES
             viewProfileIdx -> FeedOption.VIEW_PROFILE
             shareScreenshotIdx -> FeedOption.SHARE_SCREENSHOT
             reportPostIdx -> FeedOption.REPORT_POST
@@ -83,8 +85,9 @@ class FeedOptionsDelegate {
         _state.value = FeedOptionsState()
     }
 
-    private fun getOptionCount(userName: String?, hasEvent: Boolean): Int {
-        var count = 1 // Create Doodle is always present
+    private fun getOptionCount(userName: String?, hasEvent: Boolean, isCommunityMode: Boolean = false): Int {
+        var count = 1 // Create Post is always present
+        if (isCommunityMode) count += 1 // Find Communities
         if (hasEvent) {
             count += 3 // Share, Report, Hide
             if (userName != null) {

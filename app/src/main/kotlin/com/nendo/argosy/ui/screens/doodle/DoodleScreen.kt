@@ -4,8 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -19,17 +17,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FormatColorFill
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Timeline
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,26 +38,23 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import coil.compose.AsyncImage
 import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.Modal
@@ -68,18 +65,22 @@ import com.nendo.argosy.ui.util.clickableNoFocus
 @Composable
 fun DoodleScreen(
     onBack: () -> Unit,
-    onPosted: () -> Unit,
+    onDone: (doodleData: String, canvasSize: Int, gameId: Int?, gameTitle: String?, gameCoverPath: String?) -> Unit,
+    initialGameId: Int? = null,
+    initialGameTitle: String? = null,
+    initialGameCoverPath: String? = null,
     viewModel: DoodleViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val captionFocusRequester = remember { FocusRequester() }
-    var openKeyboard by remember { mutableStateOf(false) }
+
+    LaunchedEffect(initialGameId) {
+        viewModel.initGame(initialGameId, initialGameTitle, initialGameCoverPath)
+    }
 
     val inputDispatcher = LocalInputDispatcher.current
     val inputHandler = remember(viewModel, onBack) {
         DoodleInputHandler(
             viewModel = viewModel,
-            onOpenKeyboard = { openKeyboard = true },
             onNavigateBack = onBack
         )
     }
@@ -98,17 +99,13 @@ fun DoodleScreen(
         }
     }
 
-    LaunchedEffect(openKeyboard) {
-        if (openKeyboard) {
-            captionFocusRequester.requestFocus()
-            openKeyboard = false
-        }
-    }
-
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is DoodleEvent.Posted -> onPosted()
+                is DoodleEvent.Done -> onDone(
+                    event.doodleData, event.canvasSize,
+                    event.gameId, event.gameTitle, event.gameCoverPath
+                )
                 is DoodleEvent.Error -> {}
             }
         }
@@ -122,27 +119,10 @@ fun DoodleScreen(
         val isLandscape = maxWidth > maxHeight
 
         if (isLandscape) {
-            LandscapeLayout(
-                uiState = uiState,
-                viewModel = viewModel,
-                captionFocusRequester = captionFocusRequester
-            )
+            LandscapeLayout(uiState = uiState, viewModel = viewModel)
         } else {
-            PortraitLayout(
-                uiState = uiState,
-                viewModel = viewModel,
-                captionFocusRequester = captionFocusRequester
-            )
+            PortraitLayout(uiState = uiState, viewModel = viewModel)
         }
-    }
-
-    if (uiState.showPostMenu) {
-        PostMenuDialog(
-            isPosting = uiState.isPosting,
-            focusIndex = uiState.postMenuFocusIndex,
-            onPost = { viewModel.post() },
-            onCancel = { viewModel.hidePostMenu() }
-        )
     }
 
     if (uiState.showDiscardDialog) {
@@ -175,8 +155,7 @@ fun DoodleScreen(
 @Composable
 private fun LandscapeLayout(
     uiState: DoodleUiState,
-    viewModel: DoodleViewModel,
-    captionFocusRequester: FocusRequester
+    viewModel: DoodleViewModel
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -243,11 +222,13 @@ private fun LandscapeLayout(
                     onSizeSelect = { viewModel.setCanvasSize(it) }
                 )
 
-                CaptionInput(
-                    caption = uiState.caption,
-                    onCaptionChange = { viewModel.setCaption(it) },
-                    isFocused = uiState.currentSection == DoodleSection.CAPTION,
-                    focusRequester = captionFocusRequester
+                UndoRedoButtons(
+                    canUndo = uiState.canUndo,
+                    canRedo = uiState.canRedo,
+                    undoFocused = uiState.currentSection == DoodleSection.UNDO,
+                    redoFocused = uiState.currentSection == DoodleSection.REDO,
+                    onUndo = { viewModel.undo() },
+                    onRedo = { viewModel.redo() }
                 )
 
                 GameSection(
@@ -268,6 +249,8 @@ private fun LandscapeLayout(
             selectedTool = uiState.selectedTool,
             isDrawing = uiState.isDrawing,
             hasContent = uiState.hasContent,
+            canUndo = uiState.canUndo,
+            canRedo = uiState.canRedo,
             linkedGameTitle = uiState.linkedGameTitle
         )
     }
@@ -276,8 +259,7 @@ private fun LandscapeLayout(
 @Composable
 private fun PortraitLayout(
     uiState: DoodleUiState,
-    viewModel: DoodleViewModel,
-    captionFocusRequester: FocusRequester
+    viewModel: DoodleViewModel
 ) {
     Column(
         modifier = Modifier
@@ -352,21 +334,28 @@ private fun PortraitLayout(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        CaptionInput(
-            caption = uiState.caption,
-            onCaptionChange = { viewModel.setCaption(it) },
-            isFocused = uiState.currentSection == DoodleSection.CAPTION,
-            focusRequester = captionFocusRequester
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            UndoRedoButtons(
+                canUndo = uiState.canUndo,
+                canRedo = uiState.canRedo,
+                undoFocused = uiState.currentSection == DoodleSection.UNDO,
+                redoFocused = uiState.currentSection == DoodleSection.REDO,
+                onUndo = { viewModel.undo() },
+                onRedo = { viewModel.redo() },
+                modifier = Modifier.weight(1f)
+            )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        GameSection(
-            linkedGameTitle = uiState.linkedGameTitle,
-            linkedGameCoverPath = uiState.linkedGameCoverPath,
-            isFocused = uiState.currentSection == DoodleSection.GAME,
-            onClick = { viewModel.showGamePicker() }
-        )
+            GameSection(
+                linkedGameTitle = uiState.linkedGameTitle,
+                linkedGameCoverPath = uiState.linkedGameCoverPath,
+                isFocused = uiState.currentSection == DoodleSection.GAME,
+                onClick = { viewModel.showGamePicker() },
+                modifier = Modifier.weight(1f)
+            )
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -375,6 +364,8 @@ private fun PortraitLayout(
             selectedTool = uiState.selectedTool,
             isDrawing = uiState.isDrawing,
             hasContent = uiState.hasContent,
+            canUndo = uiState.canUndo,
+            canRedo = uiState.canRedo,
             linkedGameTitle = uiState.linkedGameTitle
         )
     }
@@ -544,47 +535,92 @@ private fun SizeSelector(
 }
 
 @Composable
-private fun CaptionInput(
-    caption: String,
-    onCaptionChange: (String) -> Unit,
-    isFocused: Boolean,
-    focusRequester: FocusRequester
+private fun UndoRedoButtons(
+    canUndo: Boolean,
+    canRedo: Boolean,
+    undoFocused: Boolean,
+    redoFocused: Boolean,
+    onUndo: () -> Unit,
+    onRedo: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .then(
-                if (isFocused) Modifier.border(
-                    2.dp,
-                    MaterialTheme.colorScheme.primary,
-                    RoundedCornerShape(8.dp)
-                )
-                else Modifier
-            )
-            .padding(12.dp)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.fillMaxWidth()
     ) {
-        if (caption.isEmpty()) {
-            Text(
-                text = "Add a caption...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-        }
-        BasicTextField(
-            value = caption,
-            onValueChange = onCaptionChange,
-            textStyle = TextStyle(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = MaterialTheme.typography.bodyMedium.fontSize
-            ),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            singleLine = true,
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(focusRequester)
-        )
+                .weight(1f)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .then(
+                    if (undoFocused) Modifier.border(
+                        2.dp,
+                        MaterialTheme.colorScheme.primary,
+                        RoundedCornerShape(8.dp)
+                    )
+                    else Modifier
+                )
+                .clickableNoFocus(enabled = canUndo, onClick = onUndo)
+                .padding(10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Undo,
+                    contentDescription = "Undo",
+                    modifier = Modifier.size(18.dp),
+                    tint = if (canUndo) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                )
+                Text(
+                    text = "Undo",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (canUndo) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .then(
+                    if (redoFocused) Modifier.border(
+                        2.dp,
+                        MaterialTheme.colorScheme.primary,
+                        RoundedCornerShape(8.dp)
+                    )
+                    else Modifier
+                )
+                .clickableNoFocus(enabled = canRedo, onClick = onRedo)
+                .padding(10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Redo,
+                    contentDescription = "Redo",
+                    modifier = Modifier.size(18.dp),
+                    tint = if (canRedo) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                )
+                Text(
+                    text = "Redo",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (canRedo) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                )
+            }
+        }
     }
 }
 
@@ -610,6 +646,8 @@ private fun DoodleFooter(
     selectedTool: DoodleTool,
     isDrawing: Boolean,
     hasContent: Boolean,
+    canUndo: Boolean,
+    canRedo: Boolean,
     linkedGameTitle: String? = null
 ) {
     val hints = buildList {
@@ -634,8 +672,11 @@ private fun DoodleFooter(
                 add(InputButton.DPAD_HORIZONTAL to "Size")
                 add(InputButton.A to "Confirm")
             }
-            DoodleSection.CAPTION -> {
-                add(InputButton.A to "Edit")
+            DoodleSection.UNDO -> {
+                if (canUndo) add(InputButton.A to "Undo")
+            }
+            DoodleSection.REDO -> {
+                if (canRedo) add(InputButton.A to "Redo")
             }
             DoodleSection.GAME -> {
                 add(InputButton.A to "Select")
@@ -644,7 +685,9 @@ private fun DoodleFooter(
                 }
             }
         }
-        add(InputButton.START to "Post")
+        if (hasContent) {
+            add(InputButton.START to "Done")
+        }
         val backLabel = when {
             isDrawing -> "Cancel"
             hasContent -> "Discard"
@@ -657,87 +700,15 @@ private fun DoodleFooter(
 }
 
 @Composable
-private fun PostMenuDialog(
-    isPosting: Boolean,
-    focusIndex: Int,
-    onPost: () -> Unit,
-    onCancel: () -> Unit
-) {
-    Modal(title = "Post Doodle") {
-        if (isPosting) {
-            Row(
-                modifier = Modifier.padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                Text(
-                    text = "Posting...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        } else {
-            Text(
-                text = "Share your doodle with friends?",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            OptionItem(
-                icon = Icons.Default.Send,
-                label = "Post",
-                isFocused = focusIndex == 0,
-                onClick = onPost
-            )
-            OptionItem(
-                icon = Icons.Default.Close,
-                label = "Cancel",
-                isFocused = focusIndex == 1,
-                onClick = onCancel
-            )
-        }
-    }
-}
-
-@Composable
-private fun DiscardDialog(
-    focusIndex: Int,
-    onDiscard: () -> Unit,
-    onCancel: () -> Unit
-) {
-    Modal(title = "Discard Doodle?") {
-        Text(
-            text = "You have unsaved changes. Are you sure you want to discard your doodle?",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        OptionItem(
-            icon = Icons.Default.Delete,
-            label = "Discard",
-            isFocused = focusIndex == 0,
-            isDangerous = true,
-            onClick = onDiscard
-        )
-        OptionItem(
-            icon = Icons.Default.Edit,
-            label = "Keep Editing",
-            isFocused = focusIndex == 1,
-            onClick = onCancel
-        )
-    }
-}
-
-@Composable
 private fun GameSection(
     linkedGameTitle: String?,
     linkedGameCoverPath: String?,
     isFocused: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surface)
@@ -750,9 +721,9 @@ private fun GameSection(
                 else Modifier
             )
             .clickableNoFocus(onClick = onClick)
-            .padding(12.dp),
+            .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (linkedGameCoverPath != null) {
             val imageData = if (linkedGameCoverPath.startsWith("/")) {
@@ -765,15 +736,23 @@ private fun GameSection(
                 contentDescription = linkedGameTitle,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(28.dp)
                     .clip(RoundedCornerShape(4.dp))
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.SportsEsports,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
         }
         Text(
-            text = linkedGameTitle ?: "No game selected",
-            style = MaterialTheme.typography.bodyMedium,
+            text = linkedGameTitle ?: "Game",
+            style = MaterialTheme.typography.labelMedium,
             color = if (linkedGameTitle != null) MaterialTheme.colorScheme.onSurface
-            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            maxLines = 1
         )
     }
 }
@@ -829,7 +808,7 @@ private fun GamePickerDialog(
                     )
                     else Modifier
                 )
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .padding(12.dp)
         ) {
             if (query.isEmpty()) {
                 Text(
@@ -855,26 +834,109 @@ private fun GamePickerDialog(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f, fill = false)
-        ) {
+        LazyColumn {
             item {
-                OptionItem(
-                    label = "None",
-                    isFocused = !searchFocused && focusIndex == 0,
-                    onClick = { onSelectItem(0) }
-                )
+                val isNoneFocused = !searchFocused && focusIndex == 0
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(
+                            if (isNoneFocused) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surface
+                        )
+                        .clickableNoFocus(onClick = { onSelectItem(0) })
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "No game",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isNoneFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
+
             itemsIndexed(results) { index, item ->
-                OptionItem(
-                    label = item.title,
-                    value = item.platform,
-                    isFocused = !searchFocused && focusIndex == index + 1,
-                    onClick = { onSelectItem(index + 1) }
-                )
+                val displayIndex = index + 1
+                val isItemFocused = !searchFocused && focusIndex == displayIndex
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(
+                            if (isItemFocused) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surface
+                        )
+                        .clickableNoFocus(onClick = { onSelectItem(displayIndex) })
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (item.coverPath != null) {
+                        val imageData = if (item.coverPath.startsWith("/")) {
+                            java.io.File(item.coverPath)
+                        } else {
+                            item.coverPath
+                        }
+                        AsyncImage(
+                            model = imageData,
+                            contentDescription = item.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isItemFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                        if (item.platform != null) {
+                            Text(
+                                text = item.platform,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isItemFocused) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun DiscardDialog(
+    focusIndex: Int,
+    onDiscard: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Modal(title = "Discard Doodle?") {
+        Text(
+            text = "You have unsaved changes. Are you sure you want to discard your doodle?",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        OptionItem(
+            icon = Icons.Default.Delete,
+            label = "Discard",
+            isFocused = focusIndex == 0,
+            isDangerous = true,
+            onClick = onDiscard
+        )
+        OptionItem(
+            icon = Icons.Default.Edit,
+            label = "Keep Editing",
+            isFocused = focusIndex == 1,
+            onClick = onCancel
+        )
     }
 }

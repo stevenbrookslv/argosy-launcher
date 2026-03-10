@@ -135,6 +135,10 @@ class ArgosSocialService @Inject constructor(
             val users: Map<String, SocialUser>,
             val hasMore: Boolean
         ) : IncomingMessage()
+        data class CommunityFeedData(val events: List<FeedEventDto>, val hasMore: Boolean) : IncomingMessage()
+        data class CommunityFollowsData(val follows: List<CommunityFollow>) : IncomingMessage()
+        data class CommunityFollowUpdated(val follow: CommunityFollow) : IncomingMessage()
+        data class UserSettingsData(val settings: UserSettings) : IncomingMessage()
     }
 
     fun connect(token: String) {
@@ -484,6 +488,46 @@ class ArgosSocialService @Inject constructor(
                     } else null
                 }
 
+                MessageTypes.COMMUNITY_FEED_DATA -> {
+                    if (payload != null) {
+                        val eventsArray = payload.optJSONArray("events")
+                        val hasMore = payload.optBoolean("has_more", false)
+                        val events = parseFeedEvents(eventsArray)
+                        Log.d(TAG, "COMMUNITY_FEED_DATA: ${events.size} events, hasMore=$hasMore")
+                        IncomingMessage.CommunityFeedData(events, hasMore)
+                    } else null
+                }
+
+                MessageTypes.COMMUNITY_FOLLOWS -> {
+                    if (payload != null) {
+                        val followsArray = payload.optJSONArray("follows")
+                        val follows = parseCommunityFollows(followsArray)
+                        Log.d(TAG, "COMMUNITY_FOLLOWS: ${follows.size} follows")
+                        IncomingMessage.CommunityFollowsData(follows)
+                    } else null
+                }
+
+                MessageTypes.COMMUNITY_FOLLOW_UPDATED -> {
+                    if (payload != null) {
+                        val followObj = payload.optJSONObject("follow") ?: payload
+                        val follow = parseCommunityFollow(followObj)
+                        if (follow != null) {
+                            Log.d(TAG, "COMMUNITY_FOLLOW_UPDATED: igdbGameId=${follow.igdbGameId}")
+                            IncomingMessage.CommunityFollowUpdated(follow)
+                        } else null
+                    } else null
+                }
+
+                MessageTypes.USER_SETTINGS_DATA -> {
+                    if (payload != null) {
+                        val settings = UserSettings(
+                            communityAutoShare = payload.optBoolean("community_auto_share", true)
+                        )
+                        Log.d(TAG, "USER_SETTINGS: autoShare=${settings.communityAutoShare}")
+                        IncomingMessage.UserSettingsData(settings)
+                    } else null
+                }
+
                 MessageTypes.PONG -> {
                     lastPongReceivedAt = System.currentTimeMillis()
                     missedPongs = 0
@@ -705,6 +749,78 @@ class ArgosSocialService @Inject constructor(
             "caption" to caption,
             "igdb_id" to igdbId,
             "game_title" to gameTitle
+        ))
+    }
+
+    fun createPost(
+        body: String,
+        canvasSize: Int? = null,
+        doodleData: String? = null,
+        igdbId: Int? = null,
+        gameTitle: String? = null,
+        public: Boolean = false
+    ) {
+        Log.d(TAG, "createPost: bodyLen=${body.length}, hasDoodle=${doodleData != null}, igdbId=$igdbId, public=$public")
+        send(MessageTypes.CREATE_POST, buildMap {
+            put("body", body)
+            if (canvasSize != null) put("canvas_size", canvasSize)
+            if (doodleData != null) put("doodle_data", doodleData)
+            if (igdbId != null) put("igdb_id", igdbId)
+            if (gameTitle != null) put("game_title", gameTitle)
+            put("public", public)
+        })
+    }
+
+    fun followCommunity(igdbGameId: Int, isPrivate: Boolean = false, anonymous: Boolean = false) {
+        send(MessageTypes.FOLLOW_COMMUNITY, mapOf(
+            "igdb_game_id" to igdbGameId,
+            "private" to isPrivate,
+            "anonymous" to anonymous
+        ))
+    }
+
+    fun unfollowCommunity(igdbGameId: Int) {
+        send(MessageTypes.UNFOLLOW_COMMUNITY, mapOf("igdb_game_id" to igdbGameId))
+    }
+
+    fun updateCommunityFollow(igdbGameId: Int, isPrivate: Boolean, anonymous: Boolean) {
+        send(MessageTypes.UPDATE_COMMUNITY_FOLLOW, mapOf(
+            "igdb_game_id" to igdbGameId,
+            "private" to isPrivate,
+            "anonymous" to anonymous
+        ))
+    }
+
+    fun getCommunityFeed(igdbGameId: Int? = null, limit: Int? = null, beforeId: String? = null) {
+        val payload = mutableMapOf<String, Any?>()
+        if (igdbGameId != null) payload["igdb_game_id"] = igdbGameId
+        if (limit != null) payload["limit"] = limit
+        if (beforeId != null) payload["before_id"] = beforeId
+        val json = JSONObject().apply {
+            put("type", MessageTypes.GET_COMMUNITY_FEED)
+            if (payload.isNotEmpty()) put("payload", JSONObject(payload))
+        }
+        webSocket?.send(json.toString())
+    }
+
+    fun getCommunityFollows() {
+        send(MessageTypes.GET_COMMUNITY_FOLLOWS, emptyMap())
+    }
+
+    fun getUserSettings() {
+        send(MessageTypes.GET_USER_SETTINGS, emptyMap())
+    }
+
+    fun updateUserSettings(communityAutoShare: Boolean? = null) {
+        val payload = mutableMapOf<String, Any?>()
+        if (communityAutoShare != null) payload["community_auto_share"] = communityAutoShare
+        send(MessageTypes.UPDATE_USER_SETTINGS, payload)
+    }
+
+    fun updateEventVisibility(eventId: String, public: Boolean) {
+        send(MessageTypes.UPDATE_EVENT_VISIBILITY, mapOf(
+            "event_id" to eventId,
+            "public" to public
         ))
     }
 
@@ -1012,6 +1128,30 @@ class ArgosSocialService @Inject constructor(
             }
         }
         return map
+    }
+
+    private fun parseCommunityFollows(array: org.json.JSONArray?): List<CommunityFollow> {
+        if (array == null) return emptyList()
+        return (0 until array.length()).mapNotNull { i ->
+            parseCommunityFollow(array.getJSONObject(i))
+        }
+    }
+
+    private fun parseCommunityFollow(obj: JSONObject): CommunityFollow? {
+        return try {
+            CommunityFollow(
+                userId = obj.getString("user_id"),
+                igdbGameId = obj.getInt("igdb_game_id"),
+                isPrivate = obj.optBoolean("private", false),
+                anonymous = obj.optBoolean("anonymous", false),
+                createdAt = obj.optString("created_at", ""),
+                gameTitle = obj.optString("game_title", ""),
+                coverThumb = obj.optString("cover_thumb", null)
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse community follow", e)
+            null
+        }
     }
 
     private fun jsonObjectToMap(obj: JSONObject): Map<String, Any?> {

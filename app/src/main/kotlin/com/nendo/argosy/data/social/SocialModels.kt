@@ -201,6 +201,25 @@ object MessageTypes {
     const val MARK_NOTIFICATION_READ = "mark_notification_read"
     const val MARK_ALL_READ = "mark_all_read"
     const val GET_EVENT = "get_event"
+
+    // Communities
+    const val CREATE_POST = "create_post"
+    const val FOLLOW_COMMUNITY = "follow_community"
+    const val UNFOLLOW_COMMUNITY = "unfollow_community"
+    const val UPDATE_COMMUNITY_FOLLOW = "update_community_follow"
+    const val GET_COMMUNITY_FEED = "get_community_feed"
+    const val GET_COMMUNITY_FOLLOWS = "get_community_follows"
+    const val COMMUNITY_FEED_DATA = "community_feed_data"
+    const val COMMUNITY_FOLLOWS = "community_follows"
+    const val COMMUNITY_FOLLOW_UPDATED = "community_follow_updated"
+
+    // User settings
+    const val GET_USER_SETTINGS = "get_user_settings"
+    const val UPDATE_USER_SETTINGS = "update_user_settings"
+    const val USER_SETTINGS_DATA = "user_settings"
+
+    // Event visibility
+    const val UPDATE_EVENT_VISIBILITY = "update_event_visibility"
 }
 
 @JsonClass(generateAdapter = true)
@@ -229,7 +248,8 @@ enum class FeedEventType(val value: String) {
     COLLECTION_SAVED("collection_saved"),
     COLLECTION_CREATED("collection_created"),
     COLLECTION_UPDATED("collection_updated"),
-    DOODLE("doodle");
+    DOODLE("doodle"),
+    DISCUSSION("discussion");
 
     companion object {
         fun fromValue(value: String): FeedEventType? =
@@ -343,3 +363,17 @@ data class SocialNotification(
     val isUnread: Boolean
         get() = viewedAt == null || updatedAt > (viewedAt ?: "")
 }
+
+data class CommunityFollow(
+    @Json(name = "user_id") val userId: String,
+    @Json(name = "igdb_game_id") val igdbGameId: Int,
+    @Json(name = "private") val isPrivate: Boolean = false,
+    val anonymous: Boolean = false,
+    @Json(name = "created_at") val createdAt: String = "",
+    @Json(name = "game_title") val gameTitle: String = "",
+    @Json(name = "cover_thumb") val coverThumb: String? = null
+)
+
+data class UserSettings(
+    @Json(name = "community_auto_share") val communityAutoShare: Boolean = true
+)

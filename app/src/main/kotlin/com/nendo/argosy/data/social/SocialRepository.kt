@@ -99,6 +99,23 @@ class SocialRepository @Inject constructor(
 
     private var _isLoadingMoreNotifications = false
 
+    private val _communityFollows = MutableStateFlow<List<CommunityFollow>>(emptyList())
+    val communityFollows: StateFlow<List<CommunityFollow>> = _communityFollows.asStateFlow()
+
+    private val _communityFeed = MutableStateFlow<List<FeedEventDto>>(emptyList())
+    val communityFeed: StateFlow<List<FeedEventDto>> = _communityFeed.asStateFlow()
+
+    private val _communityFeedHasMore = MutableStateFlow(false)
+    val communityFeedHasMore: StateFlow<Boolean> = _communityFeedHasMore.asStateFlow()
+
+    private val _isLoadingCommunityFeed = MutableStateFlow(false)
+    val isLoadingCommunityFeed: StateFlow<Boolean> = _isLoadingCommunityFeed.asStateFlow()
+
+    private var _isLoadingMoreCommunityFeed = false
+
+    private val _userSettings = MutableStateFlow(UserSettings())
+    val userSettings: StateFlow<UserSettings> = _userSettings.asStateFlow()
+
     private val _usersCache = mutableMapOf<String, SocialUser>()
 
     val authState: StateFlow<SocialAuthManager.AuthState> = authManager.authState
@@ -349,6 +366,36 @@ class SocialRepository @Inject constructor(
                             _notifications.value = resolved
                         }
                         _notificationsHasMore.value = message.hasMore
+                    }
+                    is ArgosSocialService.IncomingMessage.CommunityFeedData -> {
+                        if (_isLoadingMoreCommunityFeed) {
+                            _communityFeed.value = _communityFeed.value + message.events
+                        } else {
+                            _communityFeed.value = message.events
+                        }
+                        _communityFeedHasMore.value = message.hasMore
+                        _isLoadingCommunityFeed.value = false
+                        _isLoadingMoreCommunityFeed = false
+                        Log.d(TAG, "CommunityFeedData: total=${_communityFeed.value.size}, hasMore=${message.hasMore}")
+                    }
+                    is ArgosSocialService.IncomingMessage.CommunityFollowsData -> {
+                        _communityFollows.value = message.follows
+                        Log.d(TAG, "CommunityFollows: ${message.follows.size}")
+                    }
+                    is ArgosSocialService.IncomingMessage.CommunityFollowUpdated -> {
+                        val existing = _communityFollows.value.toMutableList()
+                        val idx = existing.indexOfFirst { it.igdbGameId == message.follow.igdbGameId }
+                        if (idx >= 0) {
+                            existing[idx] = message.follow
+                        } else {
+                            existing.add(message.follow)
+                        }
+                        _communityFollows.value = existing
+                        Log.d(TAG, "CommunityFollowUpdated: igdbGameId=${message.follow.igdbGameId}")
+                    }
+                    is ArgosSocialService.IncomingMessage.UserSettingsData -> {
+                        _userSettings.value = message.settings
+                        Log.d(TAG, "UserSettings: autoShare=${message.settings.communityAutoShare}")
                     }
                     is ArgosSocialService.IncomingMessage.Error -> {
                         if (message.code == "unknown_type") {
@@ -711,6 +758,82 @@ class SocialRepository @Inject constructor(
         Log.d(TAG, "commentEvent: eventId=$eventId, connected=${socialService.isConnected()}")
         if (socialService.isConnected()) {
             socialService.commentEvent(eventId, content)
+        }
+    }
+
+    fun createPost(
+        body: String,
+        canvasSize: Int? = null,
+        doodleData: String? = null,
+        igdbId: Int? = null,
+        gameTitle: String? = null,
+        public: Boolean = false
+    ) {
+        if (socialService.isConnected()) {
+            socialService.createPost(body, canvasSize, doodleData, igdbId, gameTitle, public)
+        }
+    }
+
+    fun requestCommunityFeed(igdbGameId: Int? = null, limit: Int = FEED_PAGE_SIZE) {
+        if (socialService.isConnected()) {
+            _isLoadingCommunityFeed.value = true
+            _isLoadingMoreCommunityFeed = false
+            socialService.getCommunityFeed(igdbGameId, limit)
+        }
+    }
+
+    fun loadMoreCommunityFeed(igdbGameId: Int? = null) {
+        val last = _communityFeed.value.lastOrNull() ?: return
+        if (_communityFeedHasMore.value && !_isLoadingCommunityFeed.value) {
+            _isLoadingCommunityFeed.value = true
+            _isLoadingMoreCommunityFeed = true
+            socialService.getCommunityFeed(igdbGameId, FEED_PAGE_SIZE, last.id)
+        }
+    }
+
+    fun requestCommunityFollows() {
+        if (socialService.isConnected()) {
+            socialService.getCommunityFollows()
+        }
+    }
+
+    fun followCommunity(igdbGameId: Int, isPrivate: Boolean = false, anonymous: Boolean = false) {
+        if (socialService.isConnected()) {
+            socialService.followCommunity(igdbGameId, isPrivate, anonymous)
+        }
+    }
+
+    fun unfollowCommunity(igdbGameId: Int) {
+        if (socialService.isConnected()) {
+            socialService.unfollowCommunity(igdbGameId)
+            _communityFollows.value = _communityFollows.value.filter { it.igdbGameId != igdbGameId }
+        }
+    }
+
+    fun updateCommunityFollow(igdbGameId: Int, isPrivate: Boolean, anonymous: Boolean) {
+        if (socialService.isConnected()) {
+            socialService.updateCommunityFollow(igdbGameId, isPrivate, anonymous)
+        }
+    }
+
+    fun requestUserSettings() {
+        if (socialService.isConnected()) {
+            socialService.getUserSettings()
+        }
+    }
+
+    fun updateUserSettings(communityAutoShare: Boolean? = null) {
+        if (socialService.isConnected()) {
+            socialService.updateUserSettings(communityAutoShare)
+            if (communityAutoShare != null) {
+                _userSettings.value = _userSettings.value.copy(communityAutoShare = communityAutoShare)
+            }
+        }
+    }
+
+    fun updateEventVisibility(eventId: String, public: Boolean) {
+        if (socialService.isConnected()) {
+            socialService.updateEventVisibility(eventId, public)
         }
     }
 

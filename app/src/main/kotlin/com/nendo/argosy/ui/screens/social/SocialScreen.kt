@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.screens.social
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -47,6 +48,11 @@ import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -67,9 +73,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import coil.compose.AsyncImage
+import com.nendo.argosy.data.social.CommunityFollow
 import com.nendo.argosy.data.social.FeedEventDto
 import com.nendo.argosy.data.social.FeedEventType
 import com.nendo.argosy.data.social.SocialConnectionState
+import com.nendo.argosy.ui.components.Modal
+import com.nendo.argosy.ui.screens.doodle.GamePickerItem
 import com.nendo.argosy.ui.screens.doodle.CanvasSize
 import com.nendo.argosy.ui.screens.doodle.DoodleEncoder
 import com.nendo.argosy.ui.screens.doodle.DoodlePreview
@@ -87,16 +97,16 @@ fun SocialScreen(
     onBack: () -> Unit,
     onDrawerToggle: () -> Unit,
     onOpenEventDetail: (String) -> Unit = {},
-    onCreateDoodle: () -> Unit = {},
+    onCreatePost: () -> Unit = {},
     onViewProfile: (String) -> Unit = {},
     viewModel: SocialViewModel = hiltViewModel()
 ) {
     val inputDispatcher = LocalInputDispatcher.current
-    val inputHandler = remember(onBack, onDrawerToggle, onOpenEventDetail, onCreateDoodle, onViewProfile) {
+    val inputHandler = remember(onBack, onDrawerToggle, onOpenEventDetail, onCreatePost, onViewProfile) {
         viewModel.createInputHandler(
             onBack = onBack,
             onOpenEventDetail = onOpenEventDetail,
-            onCreateDoodle = onCreateDoodle,
+            onCreatePost = onCreatePost,
             onViewProfile = onViewProfile,
             onShareScreenshot = {
                 viewModel.notificationManager.show(title = "Share screenshot coming soon")
@@ -130,13 +140,14 @@ fun SocialScreen(
     val profileListState = rememberLazyListState()
 
     LaunchedEffect(uiState.isConnected) {
-        if (uiState.isConnected && uiState.events.isEmpty()) {
+        if (uiState.isConnected && uiState.activeFeedEvents.isEmpty()) {
             viewModel.loadFeed()
         }
     }
 
-    LaunchedEffect(uiState.focusedEventIndex) {
-        if (uiState.selectedTab == SocialTab.FEED && uiState.events.isNotEmpty() && uiState.focusedEventIndex in uiState.events.indices) {
+    LaunchedEffect(uiState.focusedEventIndex, uiState.feedMode) {
+        val events = uiState.activeFeedEvents
+        if (uiState.selectedTab == SocialTab.FEED && events.isNotEmpty() && uiState.focusedEventIndex in events.indices) {
             val layoutInfo = feedListState.layoutInfo
             val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
             val itemHeight = layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 200
@@ -211,16 +222,40 @@ fun SocialScreen(
                                 ErrorContent(state.reason)
                             }
                             is SocialConnectionState.Connected -> {
-                                if (uiState.isLoading && uiState.events.isEmpty()) {
-                                    LoadingContent("Loading feed...")
-                                } else if (uiState.events.isEmpty()) {
-                                    EmptyFeedContent()
-                                } else {
-                                    FeedContent(
-                                        events = uiState.events,
-                                        focusedIndex = uiState.focusedEventIndex,
-                                        listState = feedListState
+                                val feedEvents = uiState.activeFeedEvents
+                                val feedLoading = uiState.activeFeedLoading
+                                if (feedLoading && feedEvents.isEmpty()) {
+                                    LoadingContent(
+                                        if (uiState.feedMode == FeedMode.COMMUNITY) "Loading community feed..."
+                                        else "Loading feed..."
                                     )
+                                } else if (feedEvents.isEmpty()) {
+                                    EmptyFeedContent(isCommunity = uiState.feedMode == FeedMode.COMMUNITY)
+                                } else {
+                                    Column {
+                                        if (uiState.feedMode == FeedMode.COMMUNITY) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                            ) {
+                                                Text(
+                                                    text = "Community Feed",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                    textAlign = TextAlign.Center,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                )
+                                            }
+                                        }
+                                        FeedContent(
+                                            events = feedEvents,
+                                            focusedIndex = uiState.focusedEventIndex,
+                                            listState = feedListState,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -290,6 +325,10 @@ fun SocialScreen(
                         SocialTab.FEED -> {
                             add(FooterHintItem(InputButton.A, "View"))
                             add(FooterHintItem(InputButton.Y, if (isLiked) "Unlike" else "Like"))
+                            add(FooterHintItem(
+                                InputButton.X,
+                                if (uiState.feedMode == FeedMode.COMMUNITY) "Friends" else "Community"
+                            ))
                             add(FooterHintItem(InputButton.SELECT, "Options"))
                         }
                         SocialTab.FRIENDS -> {
@@ -313,10 +352,12 @@ fun SocialScreen(
                 focusIndex = optionsState.optionsModalFocusIndex,
                 userName = focusedEvent?.user?.displayName,
                 hasEvent = focusedEvent != null,
+                isCommunityMode = uiState.feedMode == FeedMode.COMMUNITY,
                 onAction = { option ->
                     viewModel.feedOptionsDelegate.hideOptionsModal()
                     when (option) {
-                        FeedOption.CREATE_DOODLE -> onCreateDoodle()
+                        FeedOption.CREATE_POST -> onCreatePost()
+                        FeedOption.FIND_COMMUNITIES -> viewModel.showCommunitySearch()
                         FeedOption.VIEW_PROFILE -> focusedEvent?.user?.id?.let { onViewProfile(it) }
                         FeedOption.SHARE_SCREENSHOT -> {
                             viewModel.notificationManager.show(title = "Share screenshot coming soon")
@@ -338,6 +379,22 @@ fun SocialScreen(
                     viewModel.notificationManager.show(title = "Post reported and hidden")
                 },
                 onDismiss = { viewModel.feedOptionsDelegate.hideReportReasonModal() }
+            )
+        }
+
+        if (uiState.showCommunitySearch) {
+            CommunitySearchDialog(
+                query = uiState.communitySearchQuery,
+                results = uiState.communitySearchResults,
+                focusIndex = uiState.communitySearchFocusIndex,
+                searchFocused = uiState.communitySearchFieldFocused,
+                communityFollows = uiState.communityFollows,
+                onQueryChange = { viewModel.updateCommunitySearchQuery(it) },
+                onToggleFollow = { igdbId ->
+                    viewModel.toggleCommunityFollow(igdbId)
+                    viewModel.hideCommunitySearch()
+                },
+                onDismiss = { viewModel.hideCommunitySearch() }
             )
         }
     }
@@ -475,7 +532,7 @@ private fun ErrorContent(message: String) {
 }
 
 @Composable
-private fun EmptyFeedContent() {
+private fun EmptyFeedContent(isCommunity: Boolean = false) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -488,7 +545,8 @@ private fun EmptyFeedContent() {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Your friends' gaming activity will appear here",
+                text = if (isCommunity) "Follow game communities to see posts here"
+                else "Your friends' gaming activity will appear here",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
             )
@@ -500,9 +558,10 @@ private fun EmptyFeedContent() {
 private fun FeedContent(
     events: List<FeedEventDto>,
     focusedIndex: Int,
-    listState: androidx.compose.foundation.lazy.LazyListState
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    modifier: Modifier = Modifier
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -772,6 +831,8 @@ private fun DoodleCard(
 
     val doodleData = event.payload?.get("data") as? String
     val caption = event.payload?.get("caption") as? String
+    val body = event.payload?.get("body") as? String
+    val displayText = caption?.takeIf { it.isNotBlank() } ?: body
 
     val decodedDoodle = remember(doodleData) {
         doodleData?.let {
@@ -849,9 +910,9 @@ private fun DoodleCard(
                             )
                         }
 
-                        if (!caption.isNullOrBlank()) {
+                        if (!displayText.isNullOrBlank()) {
                             Text(
-                                text = caption,
+                                text = displayText,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 2,
@@ -964,44 +1025,48 @@ private fun StandardFeedEventCard(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
+        val hasGameInfo = event.game != null || event.fallbackTitle.isNotEmpty()
+
         Column {
             Row(
                 modifier = Modifier.padding(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .width(72.dp)
-                        .aspectRatio(3f / 4f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surface),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val coverThumb = event.game?.coverThumb
-                    val bitmap = remember(coverThumb) {
-                        coverThumb?.let {
-                            try {
-                                val bytes = Base64.decode(it, Base64.DEFAULT)
-                                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
-                            } catch (e: Exception) {
-                                null
+                if (hasGameInfo) {
+                    Box(
+                        modifier = Modifier
+                            .width(72.dp)
+                            .aspectRatio(3f / 4f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surface),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val coverThumb = event.game?.coverThumb
+                        val bitmap = remember(coverThumb) {
+                            coverThumb?.let {
+                                try {
+                                    val bytes = Base64.decode(it, Base64.DEFAULT)
+                                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                                } catch (e: Exception) {
+                                    null
+                                }
                             }
                         }
-                    }
-                    if (bitmap != null) {
-                        Image(
-                            bitmap = bitmap,
-                            contentDescription = event.game?.title ?: event.fallbackTitle,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Icon(
-                            Icons.Default.SportsEsports,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                            modifier = Modifier.size(32.dp)
-                        )
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap,
+                                contentDescription = event.game?.title ?: event.fallbackTitle,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.SportsEsports,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
                     }
                 }
 
@@ -1064,67 +1129,92 @@ private fun FeedEventCardFooter(
     isFocused: Boolean
 ) {
     val userColor = user?.let { parseColor(it.avatarColor) } ?: MaterialTheme.colorScheme.primary
-    val badgeShape = RoundedCornerShape(bottomStart = cornerRadius, topEnd = cornerRadius)
+    val badgeShape = RoundedCornerShape(topEnd = cornerRadius)
     val borderOffset = if (isFocused) 3.dp else 0.dp
+    val earSize = cornerRadius
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .padding(end = 12.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = if (isLikedByMe) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                contentDescription = "Likes",
-                modifier = Modifier.size(16.dp),
-                tint = if (isLikedByMe) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                }
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = likeCount.toString(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Icon(
-                imageVector = Icons.Filled.Comment,
-                contentDescription = "Comments",
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = commentCount.toString(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
-
+    Column(modifier = Modifier.fillMaxWidth()) {
         user?.let {
             Box(
                 modifier = Modifier
-                    .clip(badgeShape)
+                    .offset(y = 1.dp)
+                    .size(earSize)
+                    .clip(remember(cornerRadius) { BottomLeftTopEarShape(cornerRadius) })
                     .background(userColor)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(end = 12.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = it.displayName,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White
+                Icon(
+                    imageVector = if (isLikedByMe) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                    contentDescription = "Likes",
+                    modifier = Modifier.size(16.dp),
+                    tint = if (isLikedByMe) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    }
                 )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = likeCount.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Icon(
+                    imageVector = Icons.Filled.Comment,
+                    contentDescription = "Comments",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = commentCount.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+
+            user?.let {
+                Row(
+                    modifier = Modifier.zIndex(1f),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(badgeShape)
+                            .background(userColor)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = it.displayName,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .offset(x = (-1).dp, y = -borderOffset)
+                            .size(earSize)
+                            .clip(remember(cornerRadius) { BottomLeftRightEarShape(cornerRadius) })
+                            .background(userColor)
+                    )
+                }
             }
         }
     }
@@ -1224,6 +1314,10 @@ private fun formatEventDescription(event: FeedEventDto): String {
             "added $count games to \"$name\""
         }
         FeedEventType.DOODLE -> "shared a doodle"
+        FeedEventType.DISCUSSION -> {
+            val body = event.payload?.get("body") as? String ?: ""
+            if (body.length > 100) body.take(100) + "..." else body.ifEmpty { "shared a post" }
+        }
         null -> event.type
     }
 }
@@ -1263,5 +1357,178 @@ private class BottomLeftRightEarShape(
             close()
         }
         return Outline.Generic(path)
+    }
+}
+
+@Composable
+private fun CommunitySearchDialog(
+    query: String,
+    results: List<GamePickerItem>,
+    focusIndex: Int,
+    searchFocused: Boolean,
+    communityFollows: List<CommunityFollow>,
+    onQueryChange: (String) -> Unit,
+    onToggleFollow: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val searchFocusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+
+    LaunchedEffect(searchFocused) {
+        if (searchFocused) {
+            searchFocusRequester.requestFocus()
+        } else {
+            focusManager.clearFocus()
+        }
+    }
+
+    Modal(
+        title = "Find Communities",
+        baseWidth = 420.dp,
+        onDismiss = onDismiss,
+        footerHints = buildList {
+            if (searchFocused) {
+                add(InputButton.DPAD_DOWN to "Browse")
+            } else {
+                add(InputButton.DPAD to "Navigate")
+                add(InputButton.A to "Follow/Unfollow")
+            }
+            add(InputButton.B to "Close")
+        }
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    if (searchFocused) MaterialTheme.colorScheme.surfaceVariant
+                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+                .then(
+                    if (searchFocused) Modifier.border(
+                        2.dp,
+                        MaterialTheme.colorScheme.primary,
+                        RoundedCornerShape(8.dp)
+                    )
+                    else Modifier
+                )
+                .padding(12.dp)
+        ) {
+            if (query.isEmpty()) {
+                Text(
+                    text = "Search for a game...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            }
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                textStyle = TextStyle(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = MaterialTheme.typography.bodyMedium.fontSize
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(searchFocusRequester)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyColumn {
+            itemsIndexed(results) { index, item ->
+                val isItemFocused = !searchFocused && focusIndex == index
+                val igdbId = item.igdbId
+                val isFollowed = igdbId != null && communityFollows.any { it.igdbGameId == igdbId }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(
+                            if (isItemFocused) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surface
+                        )
+                        .clickableNoFocus(onClick = {
+                            if (igdbId != null) onToggleFollow(igdbId)
+                        })
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (item.coverPath != null) {
+                        val imageData: Any = if (item.coverPath.startsWith("/")) {
+                            java.io.File(item.coverPath)
+                        } else {
+                            item.coverPath
+                        }
+                        AsyncImage(
+                            model = imageData,
+                            contentDescription = item.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isItemFocused) MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (item.platform != null) {
+                            Text(
+                                text = item.platform,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isItemFocused) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                    if (igdbId != null) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(
+                                    if (isFollowed) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceVariant
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (isFollowed) "Following" else "Follow",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isFollowed) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (results.isEmpty() && query.isNotBlank()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No games found",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
+        }
     }
 }

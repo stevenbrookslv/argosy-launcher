@@ -49,6 +49,7 @@ sealed class Screen(val route: String) {
         fun createRoute(eventId: String) = "social/event/$eventId"
     }
     data object Doodle : Screen("doodle")
+    data object PostEditor : Screen("post_editor")
 
     companion object {
         const val ROUTE_HOME = "home"
@@ -66,5 +67,6 @@ sealed class Screen(val route: String) {
         const val ROUTE_SOCIAL = "social"
         const val ROUTE_SOCIAL_EVENT_DETAIL = "social/event"
         const val ROUTE_DOODLE = "doodle"
+        const val ROUTE_POST_EDITOR = "post_editor"
     }
 }

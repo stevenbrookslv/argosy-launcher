@@ -44,7 +44,7 @@ enum class CanvasSize(val pixels: Int, val sizeEnum: Int) {
 }
 
 enum class DoodleSection {
-    CANVAS, PALETTE, SIZE, CAPTION, GAME
+    CANVAS, PALETTE, SIZE, UNDO, REDO, GAME
 }
 
 enum class ZoomLevel(val scale: Float) {
@@ -71,21 +71,19 @@ data class DoodleUiState(
     val cursorY: Int = 0,
     val paletteFocusIndex: Int = 1,
     val sizeFocusIndex: Int = 1,
-    val caption: String = "",
-    val linkedGameId: Int? = null,
-    val linkedGameTitle: String? = null,
-    val linkedGameCoverPath: String? = null,
     val isDrawing: Boolean = false,
     val lineStartX: Int? = null,
     val lineStartY: Int? = null,
-    val showPostMenu: Boolean = false,
-    val postMenuFocusIndex: Int = 0,
     val showDiscardDialog: Boolean = false,
     val discardDialogFocusIndex: Int = 0,
-    val isPosting: Boolean = false,
     val zoomLevel: ZoomLevel = ZoomLevel.FIT,
     val panOffsetX: Float = 0f,
     val panOffsetY: Float = 0f,
+    val undoStack: List<Map<Pair<Int, Int>, DoodleColor>> = emptyList(),
+    val redoStack: List<Map<Pair<Int, Int>, DoodleColor>> = emptyList(),
+    val linkedGameId: Int? = null,
+    val linkedGameTitle: String? = null,
+    val linkedGameCoverPath: String? = null,
     val showGamePicker: Boolean = false,
     val gamePickerQuery: String = "",
     val gamePickerResults: List<GamePickerItem> = emptyList(),
@@ -93,6 +91,8 @@ data class DoodleUiState(
     val gamePickerSearchFocused: Boolean = true
 ) {
     val hasContent: Boolean get() = pixels.isNotEmpty()
+    val canUndo: Boolean get() = undoStack.isNotEmpty()
+    val canRedo: Boolean get() = redoStack.isNotEmpty()
 
     val linePreview: List<Pair<Int, Int>>?
         get() = if (selectedTool == DoodleTool.LINE && lineStartX != null && lineStartY != null) {

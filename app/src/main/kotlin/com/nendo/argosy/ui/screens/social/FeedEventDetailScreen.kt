@@ -76,6 +76,7 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.util.clickableNoFocus
+import com.nendo.argosy.ui.util.parseInlineMarkdown
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.screens.doodle.CanvasSize
 import com.nendo.argosy.ui.screens.doodle.DoodleEncoder
@@ -379,6 +380,8 @@ private fun LandscapeLayout(
     onNavigateToGame: (Long) -> Unit
 ) {
     val isDoodle = event.eventType == FeedEventType.DOODLE
+    val isDiscussion = event.eventType == FeedEventType.DISCUSSION
+    val hasMedia = !isDiscussion
     val mediaWeight = if (isDoodle) 0.5f else 0.4f
 
     Row(
@@ -387,18 +390,20 @@ private fun LandscapeLayout(
             .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .weight(mediaWeight)
-                .fillMaxHeight(),
-            contentAlignment = Alignment.Center
-        ) {
-            EventMediaContent(event, fillWidth = isDoodle)
+        if (hasMedia) {
+            Box(
+                modifier = Modifier
+                    .weight(mediaWeight)
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                EventMediaContent(event, fillWidth = isDoodle)
+            }
         }
 
         Column(
             modifier = Modifier
-                .weight(1f - mediaWeight)
+                .weight(if (hasMedia) 1f - mediaWeight else 1f)
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -530,6 +535,9 @@ private fun PortraitLayout(
 @Composable
 private fun EventMediaContent(event: FeedEventDto, fillWidth: Boolean = false) {
     when (event.eventType) {
+        FeedEventType.DISCUSSION -> {
+            // Discussion posts are text-only -- no media content
+        }
         FeedEventType.DOODLE -> {
             val doodleData = event.payload?.get("data") as? String
             val decodedDoodle = remember(doodleData) {
@@ -586,33 +594,35 @@ private fun EventMediaContent(event: FeedEventDto, fillWidth: Boolean = false) {
                 }
             }
 
-            Card(
-                modifier = Modifier
-                    .width(180.dp)
-                    .height(240.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                if (bitmap != null) {
-                    Image(
-                        bitmap = bitmap,
-                        contentDescription = event.game?.title ?: event.fallbackTitle,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+            if (bitmap != null || (event.game != null || event.fallbackTitle.isNotEmpty())) {
+                Card(
+                    modifier = Modifier
+                        .width(180.dp)
+                        .height(240.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.SportsEsports,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                            modifier = Modifier.size(64.dp)
+                ) {
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = event.game?.title ?: event.fallbackTitle,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.SportsEsports,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.size(64.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -678,11 +688,97 @@ private fun EventMetadata(
             }
         }
 
-        if (event.eventType == FeedEventType.DOODLE) {
-            val caption = event.payload?.get("caption") as? String
-            if (!caption.isNullOrBlank()) {
+        if (event.eventType == FeedEventType.DISCUSSION) {
+            val body = event.payload?.get("body") as? String
+            if (!body.isNullOrBlank()) {
                 Text(
-                    text = caption,
+                    text = parseInlineMarkdown(
+                        text = body,
+                        linkColor = MaterialTheme.colorScheme.primary
+                    ),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+
+            if (event.game != null || event.fallbackTitle.isNotEmpty()) {
+                val coverThumb = event.game?.coverThumb
+                val gameBitmap = remember(coverThumb) {
+                    coverThumb?.let {
+                        try {
+                            val bytes = Base64.decode(it, Base64.DEFAULT)
+                            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                }
+                val gameTagModifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .then(
+                        if (localGameId != null) Modifier.clickableNoFocus { onNavigateToGame(localGameId) }
+                        else Modifier
+                    )
+                    .padding(8.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = gameTagModifier
+                ) {
+                    if (gameBitmap != null) {
+                        Image(
+                            bitmap = gameBitmap,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .height(56.dp)
+                                .aspectRatio(3f / 4f)
+                                .clip(RoundedCornerShape(6.dp))
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .height(56.dp)
+                                .aspectRatio(3f / 4f)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.surface),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.SportsEsports,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = event.game?.title ?: event.fallbackTitle,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        val platform = event.game?.platform
+                        if (platform != null) {
+                            Text(
+                                text = platform,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        } else if (event.eventType == FeedEventType.DOODLE) {
+            val caption = event.payload?.get("caption") as? String
+            val body = event.payload?.get("body") as? String
+            val displayText = caption?.takeIf { it.isNotBlank() } ?: body
+            if (!displayText.isNullOrBlank()) {
+                Text(
+                    text = parseInlineMarkdown(
+                        text = displayText,
+                        linkColor = MaterialTheme.colorScheme.primary
+                    ),
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
@@ -970,7 +1066,10 @@ private fun CommentCard(
                 )
             }
             Text(
-                text = comment.content,
+                text = parseInlineMarkdown(
+                    text = comment.content,
+                    linkColor = MaterialTheme.colorScheme.primary
+                ),
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -1071,6 +1170,10 @@ private fun formatEventDescription(event: FeedEventDto): String {
             "added $count games to \"$name\""
         }
         FeedEventType.DOODLE -> "shared a doodle"
+        FeedEventType.DISCUSSION -> {
+            val body = event.payload?.get("body") as? String ?: ""
+            if (body.length > 100) body.take(100) + "..." else body.ifEmpty { "shared a post" }
+        }
         null -> event.type
     }
 }
