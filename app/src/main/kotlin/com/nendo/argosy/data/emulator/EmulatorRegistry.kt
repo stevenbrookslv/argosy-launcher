@@ -767,9 +767,10 @@ object EmulatorRegistry {
             RetroArchCore("gpsp", "gpSP")
         ),
         "nds" to listOf(
+            RetroArchCore("melondsds", "melonDS DS"),
             RetroArchCore("melonds", "melonDS"),
             RetroArchCore("desmume", "DeSmuME"),
-            RetroArchCore("desmume2015", "DeSmuME 2015")
+            RetroArchCore("desmume2015", "DeSmuME 2015"),
         ),
         "3ds" to listOf(
             RetroArchCore("citra", "Citra"),
