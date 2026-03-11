@@ -10,6 +10,7 @@ import com.nendo.argosy.data.local.dao.AchievementDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PlaySessionDao
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.ui.screens.common.AchievementUpdateBus
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.nendo.argosy.ui.notification.NotificationDuration
@@ -41,7 +42,8 @@ class SocialRepository @Inject constructor(
     private val achievementDao: AchievementDao,
     private val notificationManager: NotificationManager,
     private val discordTokenHolder: DiscordTokenHolder,
-    private val playSessionTracker: PlaySessionTracker
+    private val playSessionTracker: PlaySessionTracker,
+    private val achievementUpdateBus: AchievementUpdateBus
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var hasCompletedInitialSync = false
@@ -126,6 +128,7 @@ class SocialRepository @Inject constructor(
         observeServiceState()
         observeIncomingMessages()
         observeSyncAchievementResults()
+        observeAchievementUpdates()
         setupSessionRevokedCallback()
         attemptAutoConnect()
     }
@@ -569,6 +572,14 @@ class SocialRepository @Inject constructor(
 
         Log.d(TAG, "Synced ${payloads.size} play sessions, lastSync updated to $maxEndTime")
         return SyncResult.Success(payloads.size)
+    }
+
+    private fun observeAchievementUpdates() {
+        scope.launch {
+            achievementUpdateBus.updates.collect {
+                syncUnsharedAchievements()
+            }
+        }
     }
 
     private fun observeSyncAchievementResults() {
