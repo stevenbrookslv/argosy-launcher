@@ -848,26 +848,27 @@ class SocialRepository @Inject constructor(
         badgeName: String?,
         isHardcore: Boolean,
         earnedCount: Int,
-        totalCount: Int
-    ) {
-        if (socialService.isConnected()) {
-            socialService.createFeedEvent(
-                eventType = FeedEventType.ACHIEVEMENT_UNLOCKED.value,
-                igdbId = igdbId,
-                gameTitle = gameTitle,
-                data = mapOf(
-                    "achievement_ra_id" to achievementRaId,
-                    "achievement_name" to achievementName,
-                    "achievement_description" to achievementDescription,
-                    "ra_game_id" to raGameId,
-                    "points" to points,
-                    "badge_name" to badgeName,
-                    "is_hardcore" to isHardcore,
-                    "earned_count" to earnedCount,
-                    "total_count" to totalCount
-                )
+        totalCount: Int,
+        unlockedAt: Long
+    ): Boolean {
+        if (!socialService.isConnected()) return false
+        return socialService.createFeedEvent(
+            eventType = FeedEventType.ACHIEVEMENT_UNLOCKED.value,
+            igdbId = igdbId,
+            gameTitle = gameTitle,
+            data = mapOf(
+                "achievement_ra_id" to achievementRaId,
+                "achievement_name" to achievementName,
+                "achievement_description" to achievementDescription,
+                "ra_game_id" to raGameId,
+                "points" to points,
+                "badge_name" to badgeName,
+                "is_hardcore" to isHardcore,
+                "earned_count" to earnedCount,
+                "total_count" to totalCount,
+                "unlocked_at" to Instant.ofEpochMilli(unlockedAt).toString()
             )
-        }
+        )
     }
 
     fun emitPerfectGame(

@@ -220,7 +220,7 @@ class RetroAchievementsSessionManager(
             Log.d(TAG, "Emitted achievement update: $earnedCount/$totalCount earned for game $gameId")
 
             if (awardConfirmed) {
-                socialRepository.emitAchievementUnlocked(
+                val sent = socialRepository.emitAchievementUnlocked(
                     igdbId = gameIgdbId,
                     raGameId = gameRaId,
                     gameTitle = gameTitle,
@@ -231,9 +231,12 @@ class RetroAchievementsSessionManager(
                     badgeName = info?.badgeName,
                     isHardcore = hardcoreMode,
                     earnedCount = earnedCount,
-                    totalCount = totalCount
+                    totalCount = totalCount,
+                    unlockedAt = now
                 )
-                achievementDao.markSocialShared(gameId, achievementId, System.currentTimeMillis())
+                if (sent) {
+                    achievementDao.markSocialShared(gameId, achievementId, System.currentTimeMillis())
+                }
                 if (earnedCount == totalCount && totalCount > 0) {
                     socialRepository.emitPerfectGame(
                         igdbId = gameIgdbId,

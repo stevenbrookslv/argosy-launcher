@@ -79,7 +79,7 @@ interface AchievementDao {
         FROM achievements a INNER JOIN games g ON a.gameId = g.id
         WHERE (a.unlockedAt IS NOT NULL OR a.unlockedHardcoreAt IS NOT NULL)
           AND a.socialSharedAt IS NULL
-        ORDER BY COALESCE(a.unlockedHardcoreAt, a.unlockedAt) ASC
+        ORDER BY COALESCE(a.unlockedHardcoreAt, a.unlockedAt) DESC
         LIMIT :limit
     """)
     suspend fun getUnsharedUnlocked(limit: Int = 50): List<UnsharedAchievementRow>
