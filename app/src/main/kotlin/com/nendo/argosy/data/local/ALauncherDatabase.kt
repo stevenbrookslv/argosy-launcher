@@ -10,6 +10,7 @@ import com.nendo.argosy.data.local.dao.AchievementDao
 import com.nendo.argosy.data.local.dao.AppCategoryDao
 import com.nendo.argosy.data.local.dao.CheatDao
 import com.nendo.argosy.data.local.dao.CollectionDao
+import com.nendo.argosy.data.local.dao.CoreOptionOverrideDao
 import com.nendo.argosy.data.local.dao.ControllerMappingDao
 import com.nendo.argosy.data.local.dao.ControllerOrderDao
 import com.nendo.argosy.data.local.dao.CoreVersionDao
@@ -38,6 +39,7 @@ import com.nendo.argosy.data.local.entity.AppCategoryEntity
 import com.nendo.argosy.data.local.entity.CheatEntity
 import com.nendo.argosy.data.local.entity.CollectionEntity
 import com.nendo.argosy.data.local.entity.CollectionGameEntity
+import com.nendo.argosy.data.local.entity.CoreOptionOverrideEntity
 import com.nendo.argosy.data.local.entity.ControllerMappingEntity
 import com.nendo.argosy.data.local.entity.ControllerOrderEntity
 import com.nendo.argosy.data.local.entity.CoreVersionEntity
@@ -91,7 +93,8 @@ import com.nendo.argosy.data.local.entity.StateCacheEntity
         PendingSyncQueueEntity::class,
         PlaySessionEntity::class,
         SocialGameCacheEntity::class,
-        PendingSocialSyncEntity::class
+        PendingSocialSyncEntity::class,
+        CoreOptionOverrideEntity::class
     ],
     version = 86,
     exportSchema = true
@@ -125,6 +128,7 @@ abstract class ALauncherDatabase : RoomDatabase() {
     abstract fun playSessionDao(): PlaySessionDao
     abstract fun pendingSocialSyncDao(): PendingSocialSyncDao
     abstract fun socialGameCacheDao(): SocialGameCacheDao
+    abstract fun coreOptionOverrideDao(): CoreOptionOverrideDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -1302,6 +1306,17 @@ abstract class ALauncherDatabase : RoomDatabase() {
                 """)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_social_sync_status ON pending_social_sync(status)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_social_sync_syncType ON pending_social_sync(syncType)")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS core_option_overrides (
+                        coreId TEXT NOT NULL,
+                        optionKey TEXT NOT NULL,
+                        value TEXT NOT NULL,
+                        PRIMARY KEY (coreId, optionKey)
+                    )
+                    """
+                )
             }
         }
     }

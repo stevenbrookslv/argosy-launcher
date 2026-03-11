@@ -143,6 +143,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
             vm.selectCoreForPlatform()
             InputResult.HANDLED
         }
+        SettingsSection.CORE_OPTIONS -> InputResult.HANDLED
         SettingsSection.SOCIAL -> vm.handleSocialConfirm(state)
     }
 }
@@ -572,6 +573,9 @@ internal fun routeNavigateBack(vm: SettingsViewModel): Boolean {
         state.currentSection == SettingsSection.CORE_MANAGEMENT -> {
             vm._uiState.update { it.copy(currentSection = SettingsSection.EMULATORS, focusedIndex = 2) }; true
         }
+        state.currentSection == SettingsSection.CORE_OPTIONS -> {
+            vm._uiState.update { it.copy(currentSection = SettingsSection.EMULATORS, focusedIndex = 3) }; true
+        }
         state.currentSection != SettingsSection.MAIN -> {
             vm._uiState.update { it.copy(currentSection = SettingsSection.MAIN, focusedIndex = state.parentFocusIndex) }; true
         }
@@ -661,6 +665,7 @@ private fun computeMaxFocusIndex(
         state.platformLibretro.platformSettings
     )
     SettingsSection.CORE_MANAGEMENT -> coreManagementMaxFocusIndex(state.coreManagement.platforms)
+    SettingsSection.CORE_OPTIONS -> com.nendo.argosy.ui.screens.settings.sections.coreOptionsMaxFocusIndex(state.coreOptions)
     SettingsSection.SHADER_STACK -> com.nendo.argosy.ui.screens.settings.sections.shaderStackMaxFocusIndex(vm.shaderChainManager.shaderStack)
     SettingsSection.FRAME_PICKER -> com.nendo.argosy.ui.screens.settings.sections.framePickerMaxFocusIndex(vm.getFrameRegistry())
     SettingsSection.BIOS -> biosMaxFocusIndex(state.bios.platformGroups, state.bios.expandedPlatformIndex)

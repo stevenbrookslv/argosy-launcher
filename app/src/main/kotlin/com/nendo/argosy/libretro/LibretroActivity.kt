@@ -376,7 +376,7 @@ class LibretroActivity : ComponentActivity() {
                 preferLowLatencyAudio = settings.lowLatencyAudio
                 forceSoftwareTiming = settings.forceSoftwareTiming
                 rumbleEventsEnabled = settings.rumbleEnabled
-                variables = getCoreVariables(coreName)
+                variables = coreVariablesFromIntent()
             }
         )
         lifecycle.addObserver(retroView)
@@ -1105,18 +1105,10 @@ class LibretroActivity : ComponentActivity() {
         return "${device.vendorId}:${device.productId}:${device.descriptor}"
     }
 
-    private fun getCoreVariables(coreName: String?): Array<Variable> {
-        return when (coreName?.lowercase()) {
-            "opera" -> arrayOf(
-                Variable("opera_high_resolution", "disabled"),
-                Variable("opera_hack_timing_1", "disabled"),
-                Variable("opera_hack_timing_3", "disabled")
-            )
-            "flycast" -> arrayOf(
-                Variable("flycast_threaded_rendering", "disabled")
-            )
-            else -> emptyArray()
-        }
+    private fun coreVariablesFromIntent(): Array<Variable> {
+        val keys = intent.getStringArrayExtra(EXTRA_CORE_VAR_KEYS) ?: return emptyArray()
+        val values = intent.getStringArrayExtra(EXTRA_CORE_VAR_VALUES) ?: return emptyArray()
+        return keys.zip(values) { k, v -> Variable(k, v) }.toTypedArray()
     }
 
     private fun shouldFilterShoulderButton(keyCode: Int): Boolean {
@@ -1140,6 +1132,8 @@ class LibretroActivity : ComponentActivity() {
         const val EXTRA_GAME_NAME = "game_name"
         const val EXTRA_GAME_ID = "game_id"
         const val EXTRA_CORE_NAME = "core_name"
+        const val EXTRA_CORE_VAR_KEYS = "core_var_keys"
+        const val EXTRA_CORE_VAR_VALUES = "core_var_values"
         const val ACTION_SHOW_MENU = "com.nendo.argosy.action.SHOW_MENU"
         const val ACTION_QUIT = "com.nendo.argosy.action.QUIT"
 

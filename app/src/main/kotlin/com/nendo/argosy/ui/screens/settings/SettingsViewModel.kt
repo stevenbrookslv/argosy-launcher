@@ -9,6 +9,7 @@ import com.nendo.argosy.data.cache.ImageCacheProgress
 import com.nendo.argosy.data.emulator.EmulatorDetector
 import com.nendo.argosy.data.emulator.InstalledEmulator
 import com.nendo.argosy.data.emulator.RetroArchConfigParser
+import com.nendo.argosy.data.local.dao.CoreOptionOverrideDao
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.PlatformLibretroSettingsDao
 import com.nendo.argosy.data.repository.PlatformRepository
@@ -103,7 +104,8 @@ class SettingsViewModel @Inject constructor(
     internal val frameRegistry: com.nendo.argosy.libretro.frame.FrameRegistry,
     internal val displayAffinityHelper: com.nendo.argosy.util.DisplayAffinityHelper,
     internal val socialRepository: SocialRepository,
-    internal val discordPresenceManager: DiscordPresenceManager
+    internal val discordPresenceManager: DiscordPresenceManager,
+    internal val coreOptionOverrideDao: CoreOptionOverrideDao
 ) : ViewModel() {
 
     internal val _uiState = MutableStateFlow(SettingsUiState())
@@ -193,6 +195,7 @@ class SettingsViewModel @Inject constructor(
     fun navigateToBuiltinVideo() = emulatorDelegate.navigateToBuiltinVideo(viewModelScope)
     fun navigateToBuiltinControls() = emulatorDelegate.navigateToBuiltinControls(viewModelScope)
     fun navigateToCoreManagement() = emulatorDelegate.navigateToCoreManagement(viewModelScope)
+    fun navigateToCoreOptions() = emulatorDelegate.navigateToCoreOptions(viewModelScope)
 
     fun getInstalledCoreIds(): Set<String> =
         coreManager.getInstalledCores().map { it.coreId }.toSet()
@@ -311,6 +314,13 @@ class SettingsViewModel @Inject constructor(
     fun moveCoreManagementPlatformFocus(delta: Int): Boolean = routeMoveCoreManagementPlatformFocus(this, delta)
     fun moveCoreManagementCoreFocus(delta: Int): Boolean = routeMoveCoreManagementCoreFocus(this, delta)
     fun selectCoreForPlatform() = routeSelectCoreForPlatform(this)
+
+    fun loadCoreOptionsState() = routeLoadCoreOptionsState(this)
+    fun cycleCoreOptionsPlatformContext(direction: Int) = routeCycleCoreOptionsPlatformContext(this, direction)
+    fun cycleCoreSelector(direction: Int) = routeCycleCoreSelector(this, direction)
+    fun cycleCoreOptionValue(optionKey: String, direction: Int) = routeCycleCoreOptionValue(this, optionKey, direction)
+    fun resetCoreOption(optionKey: String) = routeResetCoreOption(this, optionKey)
+    fun resetAllCoreOptions() = routeResetAllCoreOptions(this)
 
     fun movePlatformSubFocus(delta: Int, maxIndex: Int): Boolean =
         emulatorDelegate.movePlatformSubFocus(delta, maxIndex)

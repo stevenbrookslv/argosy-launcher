@@ -45,7 +45,8 @@ import javax.inject.Inject
 enum class BuiltinNavigationTarget {
     VIDEO_SETTINGS,
     CONTROLS_SETTINGS,
-    CORE_MANAGEMENT
+    CORE_MANAGEMENT,
+    CORE_OPTIONS
 }
 
 class EmulatorSettingsDelegate @Inject constructor(
@@ -488,6 +489,12 @@ class EmulatorSettingsDelegate @Inject constructor(
     fun navigateToCoreManagement(scope: CoroutineScope) {
         scope.launch {
             _builtinNavigationEvent.emit(BuiltinNavigationTarget.CORE_MANAGEMENT)
+        }
+    }
+
+    fun navigateToCoreOptions(scope: CoroutineScope) {
+        scope.launch {
+            _builtinNavigationEvent.emit(BuiltinNavigationTarget.CORE_OPTIONS)
         }
     }
 

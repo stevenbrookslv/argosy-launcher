@@ -7,6 +7,7 @@ import com.nendo.argosy.data.local.dao.AchievementDao
 import com.nendo.argosy.data.local.dao.AppCategoryDao
 import com.nendo.argosy.data.local.dao.CheatDao
 import com.nendo.argosy.data.local.dao.CollectionDao
+import com.nendo.argosy.data.local.dao.CoreOptionOverrideDao
 import com.nendo.argosy.data.local.dao.ControllerMappingDao
 import com.nendo.argosy.data.local.dao.ControllerOrderDao
 import com.nendo.argosy.data.local.dao.CoreVersionDao
@@ -244,4 +245,8 @@ object DatabaseModule {
     @Provides
     fun provideSocialGameCacheDao(database: ALauncherDatabase): SocialGameCacheDao =
         database.socialGameCacheDao()
+
+    @Provides
+    fun provideCoreOptionOverrideDao(database: ALauncherDatabase): CoreOptionOverrideDao =
+        database.coreOptionOverrideDao()
 }

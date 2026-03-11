@@ -56,6 +56,7 @@ enum class SettingsSection {
     SHADER_STACK,
     FRAME_PICKER,
     CORE_MANAGEMENT,
+    CORE_OPTIONS,
     SOCIAL,
     PERMISSIONS,
     ABOUT
@@ -380,6 +381,36 @@ data class CoreManagementState(
 ) {
     val focusedPlatform: PlatformCoreRow? get() = platforms.getOrNull(focusedPlatformIndex)
     val focusedCore: CoreChipState? get() = focusedPlatform?.cores?.getOrNull(focusedCoreIndex)
+}
+
+data class CoreOptionsCoreContext(
+    val coreId: String,
+    val displayName: String,
+    val isInstalled: Boolean
+)
+
+data class CoreOptionViewItem(
+    val key: String,
+    val displayName: String,
+    val values: List<String>,
+    val currentValue: String,
+    val isOverridden: Boolean
+)
+
+data class CoreOptionsState(
+    val platformContextIndex: Int = 0,
+    val availablePlatforms: List<PlatformContext> = emptyList(),
+    val coresForCurrentPlatform: List<CoreOptionsCoreContext> = emptyList(),
+    val selectedCoreIndex: Int = 0,
+    val options: List<CoreOptionViewItem> = emptyList(),
+    val overrides: Map<String, String> = emptyMap()
+) {
+    val currentPlatformContext: PlatformContext? get() =
+        if (platformContextIndex in availablePlatforms.indices)
+            availablePlatforms[platformContextIndex]
+        else null
+    val selectedCore: CoreOptionsCoreContext? get() =
+        coresForCurrentPlatform.getOrNull(selectedCoreIndex)
 }
 
 data class SavePathModalInfo(
@@ -722,6 +753,7 @@ data class SettingsUiState(
     val builtinVideo: BuiltinVideoState = BuiltinVideoState(),
     val builtinControls: BuiltinControlsState = BuiltinControlsState(),
     val coreManagement: CoreManagementState = CoreManagementState(),
+    val coreOptions: CoreOptionsState = CoreOptionsState(),
     val server: ServerState = ServerState(),
     val storage: StorageState = StorageState(),
     val platformLibretro: PlatformLibretroState = PlatformLibretroState(),

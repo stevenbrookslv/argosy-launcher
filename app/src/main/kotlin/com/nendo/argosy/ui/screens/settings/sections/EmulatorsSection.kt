@@ -65,6 +65,7 @@ internal sealed class EmulatorsItem(
     data object BuiltinVideo : EmulatorsItem("builtin_video", "builtin", visibleWhen = { it.builtinLibretroEnabled })
     data object BuiltinControls : EmulatorsItem("builtin_controls", "builtin", visibleWhen = { it.builtinLibretroEnabled })
     data object BuiltinCores : EmulatorsItem("builtin_cores", "builtin", visibleWhen = { it.builtinLibretroEnabled })
+    data object BuiltinCoreOptions : EmulatorsItem("builtin_core_options", "builtin", visibleWhen = { it.builtinLibretroEnabled })
     data object BuiltinToggle : EmulatorsItem("builtin_toggle", "builtin")
     data object PlatformsHeader : EmulatorsItem("platforms_header", "platforms")
     data object CheckForUpdates : EmulatorsItem("check_updates", "platforms")
@@ -77,7 +78,7 @@ internal sealed class EmulatorsItem(
 
     companion object {
         fun buildItems(platforms: List<PlatformEmulatorConfig>): List<EmulatorsItem> =
-            listOf(BuiltinHeader, BuiltinVideo, BuiltinControls, BuiltinCores, BuiltinToggle, PlatformsHeader, CheckForUpdates, AutoAssign) +
+            listOf(BuiltinHeader, BuiltinVideo, BuiltinControls, BuiltinCores, BuiltinCoreOptions, BuiltinToggle, PlatformsHeader, CheckForUpdates, AutoAssign) +
                 platforms.mapIndexed { index, config -> PlatformItem(config, index) }
     }
 }
@@ -208,6 +209,13 @@ fun EmulatorsSection(
                             badge = if (updatesAvailable > 0) "$updatesAvailable update${if (updatesAvailable > 1) "s" else ""}" else null
                         )
                     }
+
+                    EmulatorsItem.BuiltinCoreOptions -> ActionPreference(
+                        title = "Core Options",
+                        subtitle = "Per-core settings and overrides",
+                        isFocused = isFocused(item),
+                        onClick = { viewModel.navigateToCoreOptions() }
+                    )
 
                     EmulatorsItem.PlatformsHeader -> {
                         Text(

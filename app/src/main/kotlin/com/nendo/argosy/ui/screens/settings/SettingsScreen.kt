@@ -66,6 +66,9 @@ import com.nendo.argosy.ui.screens.settings.sections.FrameSection
 import com.nendo.argosy.ui.screens.settings.sections.BuiltinVideoSection
 import com.nendo.argosy.ui.screens.settings.sections.BuiltinControlsSection
 import com.nendo.argosy.ui.screens.settings.sections.CoreManagementSection
+import com.nendo.argosy.ui.screens.settings.sections.CoreOptionItem
+import com.nendo.argosy.ui.screens.settings.sections.CoreOptionsSection
+import com.nendo.argosy.ui.screens.settings.sections.coreOptionsItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.GameDataSection
 import com.nendo.argosy.ui.screens.settings.sections.HomeScreenSection
 import com.nendo.argosy.ui.screens.settings.sections.InterfaceSection
@@ -297,6 +300,10 @@ fun SettingsScreen(
                     viewModel.loadCoreManagementState()
                     viewModel.navigateToSection(SettingsSection.CORE_MANAGEMENT)
                 }
+                BuiltinNavigationTarget.CORE_OPTIONS -> {
+                    viewModel.loadCoreOptionsState()
+                    viewModel.navigateToSection(SettingsSection.CORE_OPTIONS)
+                }
             }
         }
     }
@@ -355,6 +362,7 @@ fun SettingsScreen(
                         SettingsSection.BUILTIN_VIDEO -> "BUILT-IN VIDEO"
                         SettingsSection.BUILTIN_CONTROLS -> "BUILT-IN CONTROLS"
                         SettingsSection.CORE_MANAGEMENT -> "MANAGE CORES"
+                        SettingsSection.CORE_OPTIONS -> "CORE OPTIONS"
                         SettingsSection.BIOS -> "BIOS FILES"
                         SettingsSection.SHADER_STACK -> "SHADER CHAIN"
                         SettingsSection.FRAME_PICKER -> "SELECT FRAME"
@@ -375,6 +383,16 @@ fun SettingsScreen(
                                 platformName = platformName,
                                 onPrevious = { viewModel.cyclePlatformContext(-1) },
                                 onNext = { viewModel.cyclePlatformContext(1) }
+                            )
+                        }
+                    } else if (uiState.currentSection == SettingsSection.CORE_OPTIONS &&
+                        uiState.coreOptions.availablePlatforms.isNotEmpty()) {
+                        {
+                            val platformName = uiState.coreOptions.currentPlatformContext?.platformName ?: "---"
+                            PlatformContextIndicator(
+                                platformName = platformName,
+                                onPrevious = { viewModel.cycleCoreOptionsPlatformContext(-1) },
+                                onNext = { viewModel.cycleCoreOptionsPlatformContext(1) }
                             )
                         }
                     } else null
@@ -407,6 +425,7 @@ fun SettingsScreen(
                     SettingsSection.BUILTIN_VIDEO -> BuiltinVideoSection(uiState, viewModel)
                     SettingsSection.BUILTIN_CONTROLS -> BuiltinControlsSection(uiState, viewModel)
                     SettingsSection.CORE_MANAGEMENT -> CoreManagementSection(uiState, viewModel)
+                    SettingsSection.CORE_OPTIONS -> CoreOptionsSection(uiState, viewModel)
                     SettingsSection.BIOS -> BiosSection(uiState, viewModel)
                     SettingsSection.SHADER_STACK -> ShaderStackSection(viewModel.shaderChainManager)
                     SettingsSection.FRAME_PICKER -> FrameSection(uiState, viewModel)
@@ -895,6 +914,16 @@ private fun SettingsFooter(uiState: SettingsUiState, shaderStack: ShaderStackSta
             uiState.currentSection == SettingsSection.BUILTIN_CONTROLS) &&
             uiState.builtinVideo.availablePlatforms.isNotEmpty()) {
             add(InputButton.LB_RB to "Platform")
+        }
+        if (uiState.currentSection == SettingsSection.CORE_OPTIONS &&
+            uiState.coreOptions.availablePlatforms.isNotEmpty()) {
+            add(InputButton.LB_RB to "Platform")
+            val focusedCoreItem = coreOptionsItemAtFocusIndex(
+                uiState.focusedIndex, uiState.coreOptions
+            )
+            if (focusedCoreItem is CoreOptionItem.Option && focusedCoreItem.isOverridden) {
+                add(InputButton.Y to "Reset to Default")
+            }
         }
         if (uiState.currentSection != SettingsSection.SHADER_STACK) {
             add(InputButton.A to "Select")

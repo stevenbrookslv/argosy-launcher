@@ -18,6 +18,7 @@ import com.nendo.argosy.libretro.LibretroCoreManager
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameDiscDao
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.libretro.coreoptions.CoreOptionResolver
 import kotlinx.coroutines.flow.first
 import com.nendo.argosy.data.local.entity.GameDiscEntity
 import com.nendo.argosy.data.local.entity.GameEntity
@@ -62,7 +63,8 @@ class GameLauncher @Inject constructor(
     private val m3uManager: M3uManager,
     private val libretroCoreMgr: LibretroCoreManager,
     private val biosRepository: BiosRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val coreOptionResolver: CoreOptionResolver
 ) {
     suspend fun launch(
         gameId: Long,
@@ -355,7 +357,9 @@ class GameLauncher @Inject constructor(
         val coreName = coreFile.nameWithoutExtension
             .removeSuffix("_libretro_android")
 
-        Logger.info(TAG, "[BuiltIn] Launching: rom=${romFile.name}, core=$coreName, romSize=${romFile.length()}b")
+        val coreVariables = coreOptionResolver.resolveVariables(coreName)
+
+        Logger.info(TAG, "[BuiltIn] Launching: rom=${romFile.name}, core=$coreName, romSize=${romFile.length()}b, coreVars=${coreVariables.size}")
         return Intent(context, LibretroActivity::class.java).apply {
             putExtra(LibretroActivity.EXTRA_ROM_PATH, romFile.absolutePath)
             putExtra(LibretroActivity.EXTRA_CORE_PATH, corePath)
@@ -363,6 +367,8 @@ class GameLauncher @Inject constructor(
             putExtra(LibretroActivity.EXTRA_GAME_NAME, game.title)
             putExtra(LibretroActivity.EXTRA_GAME_ID, game.id)
             putExtra(LibretroActivity.EXTRA_CORE_NAME, coreName)
+            putExtra(LibretroActivity.EXTRA_CORE_VAR_KEYS, coreVariables.map { it.key }.toTypedArray())
+            putExtra(LibretroActivity.EXTRA_CORE_VAR_VALUES, coreVariables.map { it.value }.toTypedArray())
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
     }
