@@ -152,8 +152,6 @@ class HomeLibraryDelegate @Inject constructor(
                 )
             }
 
-            onStartRowResolved(startRow)
-
             if (startRow is HomeRow.Platform) {
                 val platform = platforms.getOrNull(startRow.index)
                 if (platform != null) {
@@ -162,6 +160,8 @@ class HomeLibraryDelegate @Inject constructor(
             }
 
             loadRecommendations()
+
+            onStartRowResolved(startRow)
 
             validateInstalledGamesInBackground(scope)
         }

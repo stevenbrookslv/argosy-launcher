@@ -354,6 +354,7 @@ class HomeViewModel @Inject constructor(
 
     private fun loadData() {
         libraryDelegate.loadInitialData(viewModelScope) { startRow ->
+            flushLibraryState()
             _uiState.update { it.copy(currentRow = startRow, isLoading = false) }
             viewModelScope.launch {
                 downloadDelegate.observeDownloadState(viewModelScope) {
