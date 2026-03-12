@@ -4,12 +4,16 @@ import android.util.Log
 import com.nendo.argosy.data.emulator.ApkAssetMatcher
 import com.nendo.argosy.data.emulator.ApkMatchResult
 import com.nendo.argosy.data.emulator.EmulatorDef
+import com.nendo.argosy.data.emulator.ReleaseSource
 import com.nendo.argosy.data.local.dao.EmulatorUpdateDao
 import com.nendo.argosy.data.local.entity.EmulatorUpdateEntity
+import com.nendo.argosy.data.remote.gitea.GiteaApi
+import com.nendo.argosy.data.remote.gitlab.GitLabApi
 import com.squareup.moshi.Moshi
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.net.URLEncoder
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -96,21 +100,100 @@ class EmulatorUpdateRepository @Inject constructor(
         }
     }
 
-    private val gitHubApi: GitHubApi by lazy { createApi() }
+    private val moshi = Moshi.Builder().build()
 
-    private fun createApi(): GitHubApi {
-        val moshi = Moshi.Builder().build()
-        val client = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .build()
+    private val httpClient = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
 
-        return Retrofit.Builder()
+    private val gitHubApi: GitHubApi by lazy {
+        Retrofit.Builder()
             .baseUrl(GITHUB_API_BASE)
-            .client(client)
+            .client(httpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(GitHubApi::class.java)
+    }
+
+    private val giteaApis = mutableMapOf<String, GiteaApi>()
+    private val gitLabApis = mutableMapOf<String, GitLabApi>()
+
+    private fun getGiteaApi(baseUrl: String): GiteaApi =
+        giteaApis.getOrPut(baseUrl) {
+            Retrofit.Builder()
+                .baseUrl(baseUrl.trimEnd('/') + "/")
+                .client(httpClient)
+                .addConverterFactory(MoshiConverterFactory.create(moshi))
+                .build()
+                .create(GiteaApi::class.java)
+        }
+
+    private fun getGitLabApi(baseUrl: String): GitLabApi =
+        gitLabApis.getOrPut(baseUrl) {
+            Retrofit.Builder()
+                .baseUrl(baseUrl.trimEnd('/') + "/")
+                .client(httpClient)
+                .addConverterFactory(MoshiConverterFactory.create(moshi))
+                .build()
+                .create(GitLabApi::class.java)
+        }
+
+    private suspend fun fetchReleaseFromSource(source: ReleaseSource): GitHubRelease? {
+        return when (source) {
+            is ReleaseSource.GitHub -> {
+                val (owner, repo) = source.repo.split("/")
+                val response = gitHubApi.getRepoLatestRelease(owner, repo)
+                if (response.isSuccessful) response.body() else null
+            }
+            is ReleaseSource.Gitea -> {
+                val (owner, repo) = source.repo.split("/")
+                val api = getGiteaApi(source.baseUrl)
+                val response = api.getLatestRelease(owner, repo)
+                if (response.isSuccessful) response.body() else null
+            }
+            is ReleaseSource.GitLab -> {
+                val api = getGitLabApi(source.baseUrl)
+                val encodedPath = URLEncoder.encode(source.projectPath, "UTF-8")
+                val response = api.getReleases(encodedPath, perPage = 1)
+                if (!response.isSuccessful) return null
+                val glRelease = response.body()?.firstOrNull() ?: return null
+                GitHubRelease(
+                    tagName = glRelease.tagName,
+                    name = glRelease.name,
+                    body = glRelease.description,
+                    prerelease = false,
+                    draft = false,
+                    htmlUrl = "${source.baseUrl}/${source.projectPath}/-/releases/${glRelease.tagName}",
+                    targetCommitish = null,
+                    assets = glRelease.assets?.links?.map { link ->
+                        GitHubAsset(
+                            name = link.name,
+                            downloadUrl = link.directAssetUrl,
+                            size = 0,
+                            contentType = "application/octet-stream"
+                        )
+                    } ?: emptyList()
+                )
+            }
+        }
+    }
+
+    private suspend fun fetchTagsFromSource(source: ReleaseSource): List<GitHubTag>? {
+        return when (source) {
+            is ReleaseSource.GitHub -> {
+                val (owner, repo) = source.repo.split("/")
+                val response = gitHubApi.getRepoTags(owner, repo)
+                if (response.isSuccessful) response.body() else null
+            }
+            is ReleaseSource.Gitea -> {
+                val (owner, repo) = source.repo.split("/")
+                val api = getGiteaApi(source.baseUrl)
+                val response = api.getTags(owner, repo)
+                if (response.isSuccessful) response.body() else null
+            }
+            is ReleaseSource.GitLab -> null
+        }
     }
 
     suspend fun checkForUpdate(
@@ -118,34 +201,21 @@ class EmulatorUpdateRepository @Inject constructor(
         installedVersion: String?,
         storedVariant: String? = null
     ): EmulatorUpdateCheckResult {
-        val githubRepo = emulator.githubRepo ?: return EmulatorUpdateCheckResult.Error(
+        val source = emulator.releaseSource ?: return EmulatorUpdateCheckResult.Error(
             emulator.id,
-            "No GitHub repo configured"
+            "No release source configured"
         )
 
-        val (owner, repo) = githubRepo.split("/").let {
-            if (it.size != 2) return EmulatorUpdateCheckResult.Error(
-                emulator.id,
-                "Invalid repo format: $githubRepo"
-            )
-            it[0] to it[1]
-        }
-
         return try {
-            val response = gitHubApi.getRepoLatestRelease(owner, repo)
+            val release = fetchReleaseFromSource(source)
 
-            if (!response.isSuccessful) {
-                Log.w(TAG, "API error for ${emulator.id}: ${response.code()}")
+            if (release == null) {
+                Log.w(TAG, "API error for ${emulator.id}")
                 return EmulatorUpdateCheckResult.Error(
                     emulator.id,
-                    "GitHub API returned ${response.code()}"
+                    "Release API request failed"
                 )
             }
-
-            val release = response.body() ?: return EmulatorUpdateCheckResult.Error(
-                emulator.id,
-                "Empty response"
-            )
 
             // Try to extract version from release info first
             var extractedVersion = extractVersionFromRelease(release)
@@ -154,16 +224,11 @@ class EmulatorUpdateRepository @Inject constructor(
             // If no semver found and tag looks like a commit hash, fetch tags to find version
             if (extractedVersion == null && isCommitHash(release.tagName)) {
                 Log.d(TAG, "${emulator.id}: tag is commit hash, fetching tags...")
-                val tagsResponse = gitHubApi.getRepoTags(owner, repo)
-                if (tagsResponse.isSuccessful) {
-                    tagsResponse.body()?.let { tags ->
-                        Log.d(TAG, "${emulator.id}: got ${tags.size} tags")
-                        tags.take(5).forEach { t -> Log.d(TAG, "  tag: ${t.name} -> ${t.commit.sha.take(7)}") }
-                        extractedVersion = findVersionFromTags(tags, release.tagName)
-                        Log.d(TAG, "${emulator.id}: found version from tags: $extractedVersion")
-                    }
-                } else {
-                    Log.w(TAG, "${emulator.id}: failed to fetch tags: ${tagsResponse.code()}")
+                fetchTagsFromSource(source)?.let { tags ->
+                    Log.d(TAG, "${emulator.id}: got ${tags.size} tags")
+                    tags.take(5).forEach { t -> Log.d(TAG, "  tag: ${t.name} -> ${t.commit.sha.take(7)}") }
+                    extractedVersion = findVersionFromTags(tags, release.tagName)
+                    Log.d(TAG, "${emulator.id}: found version from tags: $extractedVersion")
                 }
             }
 
@@ -177,15 +242,12 @@ class EmulatorUpdateRepository @Inject constructor(
             var resolvedInstalledVersion = installedVersion
             if (installedVersion != null && isCommitHash(installedVersion)) {
                 Log.d(TAG, "${emulator.id}: installed version is commit hash, fetching tags...")
-                val tagsResponse = gitHubApi.getRepoTags(owner, repo)
-                if (tagsResponse.isSuccessful) {
-                    tagsResponse.body()?.let { tags ->
-                        val matchingTag = tags.find { it.commit.sha.startsWith(installedVersion) || installedVersion.startsWith(it.commit.sha.take(7)) }
-                        if (matchingTag != null) {
-                            val tagVersion = VERSION_PATTERN.find(matchingTag.name)?.groupValues?.get(1) ?: matchingTag.name
-                            Log.d(TAG, "${emulator.id}: resolved commit $installedVersion to tag ${matchingTag.name} -> $tagVersion")
-                            resolvedInstalledVersion = tagVersion
-                        }
+                fetchTagsFromSource(source)?.let { tags ->
+                    val matchingTag = tags.find { it.commit.sha.startsWith(installedVersion) || installedVersion.startsWith(it.commit.sha.take(7)) }
+                    if (matchingTag != null) {
+                        val tagVersion = VERSION_PATTERN.find(matchingTag.name)?.groupValues?.get(1) ?: matchingTag.name
+                        Log.d(TAG, "${emulator.id}: resolved commit $installedVersion to tag ${matchingTag.name} -> $tagVersion")
+                        resolvedInstalledVersion = tagVersion
                     }
                 }
             }
@@ -327,32 +389,19 @@ class EmulatorUpdateRepository @Inject constructor(
     }
 
     suspend fun fetchLatestRelease(emulator: EmulatorDef): FetchReleaseResult {
-        val githubRepo = emulator.githubRepo ?: return FetchReleaseResult.Error("No GitHub repo configured")
-
-        val (owner, repo) = githubRepo.split("/").let {
-            if (it.size != 2) return FetchReleaseResult.Error("Invalid repo format: $githubRepo")
-            it[0] to it[1]
-        }
+        val source = emulator.releaseSource ?: return FetchReleaseResult.Error("No release source configured")
 
         return try {
-            val response = gitHubApi.getRepoLatestRelease(owner, repo)
-
-            if (!response.isSuccessful) {
-                return FetchReleaseResult.Error("GitHub API returned ${response.code()}")
-            }
-
-            val release = response.body() ?: return FetchReleaseResult.Error("Empty response")
+            val release = fetchReleaseFromSource(source)
+                ?: return FetchReleaseResult.Error("Release API request failed")
 
             // Try to extract version from release info first
             var version = extractVersionFromRelease(release)
 
             // If no semver found and tag looks like a commit hash, fetch tags to find version
             if (version == null && isCommitHash(release.tagName)) {
-                val tagsResponse = gitHubApi.getRepoTags(owner, repo)
-                if (tagsResponse.isSuccessful) {
-                    tagsResponse.body()?.let { tags ->
-                        version = findVersionFromTags(tags, release.tagName)
-                    }
+                fetchTagsFromSource(source)?.let { tags ->
+                    version = findVersionFromTags(tags, release.tagName)
                 }
             }
 

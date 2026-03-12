@@ -71,7 +71,7 @@ class SteamSettingsDelegate @Inject constructor(
                     NotInstalledSteamLauncher(
                         emulatorId = def.id,
                         displayName = def.displayName,
-                        hasDirectDownload = def.githubRepo != null
+                        hasDirectDownload = def.releaseSource != null
                     )
                 }
 
@@ -97,7 +97,7 @@ class SteamSettingsDelegate @Inject constructor(
     fun installSteamLauncher(emulatorId: String, scope: CoroutineScope) {
         val def = EmulatorRegistry.getById(emulatorId) ?: return
 
-        if (def.githubRepo == null) {
+        if (def.releaseSource == null) {
             scope.launch { def.downloadUrl?.let { _openUrlEvent.emit(it) } }
             return
         }

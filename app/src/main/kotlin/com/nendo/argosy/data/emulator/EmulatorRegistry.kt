@@ -4,6 +4,12 @@ import android.content.Intent
 import com.nendo.argosy.data.platform.PlatformDefinitions
 import com.nendo.argosy.libretro.LibretroCoreRegistry
 
+sealed class ReleaseSource {
+    data class GitHub(val repo: String) : ReleaseSource()
+    data class Gitea(val baseUrl: String, val repo: String) : ReleaseSource()
+    data class GitLab(val baseUrl: String, val projectPath: String) : ReleaseSource()
+}
+
 data class EmulatorDef(
     val id: String,
     val packageName: String,
@@ -12,7 +18,7 @@ data class EmulatorDef(
     val launchAction: String = Intent.ACTION_VIEW,
     val launchConfig: LaunchConfig = LaunchConfig.FileUri,
     val downloadUrl: String? = null,
-    val githubRepo: String? = null,
+    val releaseSource: ReleaseSource? = null,
     val packagePatterns: List<String> = emptyList()
 )
 
@@ -195,7 +201,7 @@ object EmulatorRegistry {
             displayName = "Cemu",
             supportedPlatforms = setOf("wiiu"),
             downloadUrl = "https://github.com/SSimco/Cemu/releases",
-            githubRepo = "SSimco/Cemu"
+            releaseSource = ReleaseSource.GitHub("SSimco/Cemu")
         ),
         // NOTE: Dual-screen fork uses same package name as official Cemu - only one can be installed
         EmulatorDef(
@@ -204,7 +210,7 @@ object EmulatorRegistry {
             displayName = "Cemu (Dual Screen)",
             supportedPlatforms = setOf("wiiu"),
             downloadUrl = "https://github.com/SapphireRhodonite/Cemu/releases",
-            githubRepo = "SapphireRhodonite/Cemu"
+            releaseSource = ReleaseSource.GitHub("SapphireRhodonite/Cemu")
         ),
         // NOTE: Original Citra is discontinued - use Azahar or Borked3DS instead
         EmulatorDef(
@@ -227,7 +233,7 @@ object EmulatorRegistry {
                 intentExtras = mapOf("GamePath" to ExtraValue.FilePath)
             ),
             downloadUrl = "https://github.com/weihuoya/citra/releases",
-            githubRepo = "weihuoya/citra"
+            releaseSource = ReleaseSource.GitHub("weihuoya/citra")
         ),
         // NOTE: Azahar took over Lime3DS development, keeping the same package name
         // Uses Citra's internal namespace for activities
@@ -241,7 +247,7 @@ object EmulatorRegistry {
                 intentExtras = mapOf("SelectedGame" to ExtraValue.FilePath)
             ),
             downloadUrl = "https://github.com/azahar-emu/azahar/releases",
-            githubRepo = "azahar-emu/azahar"
+            releaseSource = ReleaseSource.GitHub("azahar-emu/azahar")
         ),
         EmulatorDef(
             id = "borked3ds",
@@ -252,7 +258,7 @@ object EmulatorRegistry {
                 activityClass = "io.github.borked3ds.android.activities.EmulationActivity"
             ),
             downloadUrl = "https://github.com/Borked3DS/Borked3DS/releases",
-            githubRepo = "Borked3DS/Borked3DS"
+            releaseSource = ReleaseSource.GitHub("Borked3DS/Borked3DS")
         ),
         EmulatorDef(
             id = "yuzu",
@@ -277,8 +283,8 @@ object EmulatorRegistry {
             packageName = "dev.eden.eden_emulator",
             displayName = "Eden",
             supportedPlatforms = setOf("switch"),
-            downloadUrl = "https://github.com/eden-emulator/Releases/releases",
-            githubRepo = "eden-emulator/Releases"
+            downloadUrl = "https://git.eden-emu.dev/eden-emu/eden/releases",
+            releaseSource = ReleaseSource.Gitea("https://git.eden-emu.dev", "eden-emu/eden")
         ),
         EmulatorDef(
             id = "strato",
@@ -298,8 +304,8 @@ object EmulatorRegistry {
             packageName = "org.kenjinx.android",
             displayName = "Kenji-NX",
             supportedPlatforms = setOf("switch"),
-            downloadUrl = "https://github.com/Kenji-NX/Android-Releases/releases",
-            githubRepo = "Kenji-NX/Android-Releases"
+            downloadUrl = "https://git.ryujinx.app/kenji-nx/android/-/releases",
+            releaseSource = ReleaseSource.GitLab("https://git.ryujinx.app", "kenji-nx/android")
         ),
         EmulatorDef(
             id = "sudachi",
@@ -329,7 +335,7 @@ object EmulatorRegistry {
                 intentExtras = mapOf("uri" to ExtraValue.FileUri)
             ),
             downloadUrl = "https://github.com/rafaelvcaetano/melonDS-android/releases/tag/nightly-release",
-            githubRepo = "rafaelvcaetano/melonDS-android"
+            releaseSource = ReleaseSource.GitHub("rafaelvcaetano/melonDS-android")
         ),
         EmulatorDef(
             id = "pizza_boy_gba",
@@ -372,7 +378,7 @@ object EmulatorRegistry {
                 intentExtras = mapOf("bootPath" to ExtraValue.DocumentUri)
             ),
             downloadUrl = "https://github.com/Trixarian/NetherSX2-patch/releases",
-            githubRepo = "Trixarian/NetherSX2-patch"
+            releaseSource = ReleaseSource.GitHub("Trixarian/NetherSX2-patch")
         ),
         // AetherSX2 is discontinued - shares package with NetherSX2, kept for detection
         EmulatorDef(
@@ -395,7 +401,7 @@ object EmulatorRegistry {
                 activityClass = "kr.co.iefriends.pcsx2.activities.MainActivity"
             ),
             downloadUrl = "https://github.com/ARMSX2/ARMSX2/releases",
-            githubRepo = "ARMSX2/ARMSX2"
+            releaseSource = ReleaseSource.GitHub("ARMSX2/ARMSX2")
         ),
         EmulatorDef(
             id = "pcsx2",
@@ -403,7 +409,7 @@ object EmulatorRegistry {
             displayName = "PCSX2",
             supportedPlatforms = setOf("ps2"),
             downloadUrl = "https://github.com/PCSX2/pcsx2/releases",
-            githubRepo = "PCSX2/pcsx2"
+            releaseSource = ReleaseSource.GitHub("PCSX2/pcsx2")
         ),
         EmulatorDef(
             id = "ppsspp",
@@ -435,7 +441,7 @@ object EmulatorRegistry {
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.Vita3K(),
             downloadUrl = "https://github.com/Vita3K/Vita3K-Android/releases",
-            githubRepo = "Vita3K/Vita3K-Android"
+            releaseSource = ReleaseSource.GitHub("Vita3K/Vita3K-Android")
         ),
         EmulatorDef(
             id = "vita3k-zx",
@@ -445,7 +451,7 @@ object EmulatorRegistry {
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.Vita3K(),
             downloadUrl = "https://github.com/ikhoeyZX/Vita3K-Android/releases",
-            githubRepo = "ikhoeyZX/Vita3K-Android"
+            releaseSource = ReleaseSource.GitHub("ikhoeyZX/Vita3K-Android")
         ),
 
         // NOTE: Redream has known Android 13+ issues - explicit activity launches fail
@@ -563,7 +569,7 @@ object EmulatorRegistry {
             displayName = "GameHub Lite",
             supportedPlatforms = setOf("steam"),
             downloadUrl = "https://github.com/Producdevity/gamehub-lite/releases",
-            githubRepo = "Producdevity/gamehub-lite"
+            releaseSource = ReleaseSource.GitHub("Producdevity/gamehub-lite")
         ),
         EmulatorDef(
             id = "gamenative",
@@ -571,7 +577,7 @@ object EmulatorRegistry {
             displayName = "GameNative",
             supportedPlatforms = setOf("steam"),
             downloadUrl = "https://github.com/utkarshdalal/GameNative/releases",
-            githubRepo = "utkarshdalal/GameNative"
+            releaseSource = ReleaseSource.GitHub("utkarshdalal/GameNative")
         )
     )
 
@@ -587,7 +593,7 @@ object EmulatorRegistry {
     fun getAlternatives(packageName: String): List<EmulatorDef> =
         emulators.filter { it.packageName == packageName }
 
-    fun getUpdateCheckable(): List<EmulatorDef> = emulators.filter { it.githubRepo != null }
+    fun getUpdateCheckable(): List<EmulatorDef> = emulators.filter { it.releaseSource != null }
 
     fun getForPlatform(platformId: String): List<EmulatorDef> {
         val canonical = PlatformDefinitions.getCanonicalSlug(platformId)
@@ -1003,7 +1009,7 @@ object EmulatorRegistry {
                 "com.miHoYo.Yuanshen"
             ),
             supportedPlatforms = setOf("switch"),
-            downloadUrl = "https://github.com/eden-emulator/Releases/releases"
+            downloadUrl = "https://git.eden-emu.dev/eden-emu/eden/releases"
         ),
         EmulatorFamily(
             baseId = "strato",
@@ -1028,7 +1034,7 @@ object EmulatorRegistry {
             displayNamePrefix = "Kenji-NX",
             packagePatterns = listOf("org.kenjinx.*"),
             supportedPlatforms = setOf("switch"),
-            downloadUrl = "https://github.com/Kenji-NX/Android-Releases/releases"
+            downloadUrl = "https://git.ryujinx.app/kenji-nx/android/-/releases"
         ),
         EmulatorFamily(
             baseId = "ppsspp",

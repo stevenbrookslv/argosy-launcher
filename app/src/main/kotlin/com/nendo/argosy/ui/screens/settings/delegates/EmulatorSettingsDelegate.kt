@@ -201,7 +201,7 @@ class EmulatorSettingsDelegate @Inject constructor(
                     if (updateInfo != null) {
                         // If no variant stored and emulator supports GitHub updates,
                         // fetch fresh to allow variant selection
-                        if (updateInfo.installedVariant == null && emulator.def.githubRepo != null) {
+                        if (updateInfo.installedVariant == null && emulator.def.releaseSource != null) {
                             fetchAndDownloadEmulator(emulator.def)
                         } else {
                             downloadEmulatorUpdate(
@@ -221,7 +221,7 @@ class EmulatorSettingsDelegate @Inject constructor(
                     val downloadIndex = focusIndex - downloadBaseIndex
                     val emulator = info.downloadableEmulators.getOrNull(downloadIndex) ?: return@launch
 
-                    if (emulator.githubRepo != null) {
+                    if (emulator.releaseSource != null) {
                         fetchAndDownloadEmulator(emulator)
                     } else {
                         emulator.downloadUrl?.let { _openUrlEvent.emit(it) }
