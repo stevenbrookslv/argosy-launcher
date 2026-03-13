@@ -68,7 +68,9 @@ import com.nendo.argosy.ui.screens.gamedetail.components.GameDetailMenu
 import com.nendo.argosy.ui.screens.gamedetail.components.GameDetailMenuState
 import com.nendo.argosy.ui.screens.gamedetail.components.GameDetailSkeleton
 import com.nendo.argosy.ui.screens.gamedetail.components.GameHeader
-import com.nendo.argosy.ui.screens.gamedetail.components.MenuItemType
+import com.nendo.argosy.ui.screens.gamedetail.components.MenuItem
+import com.nendo.argosy.ui.screens.gamedetail.components.MenuLayoutState
+import com.nendo.argosy.ui.screens.gamedetail.components.menuLayout
 import com.nendo.argosy.ui.screens.gamedetail.components.ScreenshotViewerOverlay
 import com.nendo.argosy.ui.screens.gamedetail.components.ScreenshotsSection
 import com.nendo.argosy.ui.components.DiscPickerModal
@@ -189,20 +191,19 @@ fun GameDetailScreen(
                 true
             },
             onSectionLeft = {
-                val menuState = GameDetailMenuState(
-                    focusedIndex = uiState.menuFocusIndex,
+                val layoutState = MenuLayoutState(
                     hasDescription = hasDescription,
                     hasScreenshots = hasScreenshots,
                     hasAchievements = hasAchievements,
                     hasSocialAccount = uiState.hasSocialAccount
                 )
-                when (menuState.focusedItem) {
-                    MenuItemType.SCREENSHOTS -> if (screenshotCount > 0) {
+                when (menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, layoutState)) {
+                    MenuItem.Screenshots -> if (screenshotCount > 0) {
                         val currentIndex = screenshotListState.firstVisibleItemIndex
                         val newIndex = (currentIndex - 1).coerceAtLeast(0)
                         coroutineScope.launch { screenshotListState.animateScrollToItem(newIndex) }
                     }
-                    MenuItemType.ACHIEVEMENTS -> if (achievementColumnCount > 0) {
+                    MenuItem.Achievements -> if (achievementColumnCount > 0) {
                         val currentIndex = achievementListState.firstVisibleItemIndex
                         val newIndex = (currentIndex - 1).coerceAtLeast(0)
                         coroutineScope.launch { achievementListState.animateScrollToItem(newIndex) }
@@ -211,20 +212,19 @@ fun GameDetailScreen(
                 }
             },
             onSectionRight = {
-                val menuState = GameDetailMenuState(
-                    focusedIndex = uiState.menuFocusIndex,
+                val layoutState = MenuLayoutState(
                     hasDescription = hasDescription,
                     hasScreenshots = hasScreenshots,
                     hasAchievements = hasAchievements,
                     hasSocialAccount = uiState.hasSocialAccount
                 )
-                when (menuState.focusedItem) {
-                    MenuItemType.SCREENSHOTS -> if (screenshotCount > 0) {
+                when (menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, layoutState)) {
+                    MenuItem.Screenshots -> if (screenshotCount > 0) {
                         val currentIndex = screenshotListState.firstVisibleItemIndex
                         val newIndex = (currentIndex + 1).coerceAtMost(screenshotCount - 1)
                         coroutineScope.launch { screenshotListState.animateScrollToItem(newIndex) }
                     }
-                    MenuItemType.ACHIEVEMENTS -> if (achievementColumnCount > 0) {
+                    MenuItem.Achievements -> if (achievementColumnCount > 0) {
                         val currentIndex = achievementListState.firstVisibleItemIndex
                         val newIndex = (currentIndex + 1).coerceAtMost(achievementColumnCount - 1)
                         coroutineScope.launch { achievementListState.animateScrollToItem(newIndex) }
@@ -235,14 +235,13 @@ fun GameDetailScreen(
             onPrevGame = { viewModel.navigateToPreviousGame() },
             onNextGame = { viewModel.navigateToNextGame() },
             isInScreenshotsSection = {
-                val menuState = GameDetailMenuState(
-                    focusedIndex = uiState.menuFocusIndex,
+                val layoutState = MenuLayoutState(
                     hasDescription = hasDescription,
                     hasScreenshots = hasScreenshots,
                     hasAchievements = hasAchievements,
                     hasSocialAccount = uiState.hasSocialAccount
                 )
-                menuState.focusedItem == MenuItemType.SCREENSHOTS
+                menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, layoutState) == MenuItem.Screenshots
             }
         )
     }
@@ -394,7 +393,14 @@ private fun GameDetailContent(
     val headerScrollThreshold = 200
     val isHeaderCollapsed = scrollState.value > headerScrollThreshold
 
-    val menuState = GameDetailMenuState(
+    val menuLayoutState = MenuLayoutState(
+        hasDescription = !game.description.isNullOrBlank(),
+        hasScreenshots = game.screenshots.isNotEmpty(),
+        hasAchievements = game.achievements.isNotEmpty(),
+        hasSocialAccount = uiState.hasSocialAccount
+    )
+
+    val menuDisplayState = GameDetailMenuState(
         focusedIndex = uiState.menuFocusIndex,
         isDownloaded = uiState.downloadStatus == GameDownloadStatus.DOWNLOADED,
         isDownloading = uiState.downloadStatus in listOf(
@@ -405,47 +411,45 @@ private fun GameDetailContent(
         isExtracting = uiState.downloadStatus == GameDownloadStatus.EXTRACTING,
         downloadProgress = uiState.downloadProgress,
         isFavorite = game.isFavorite,
-        hasDescription = !game.description.isNullOrBlank(),
-        hasScreenshots = game.screenshots.isNotEmpty(),
-        hasAchievements = game.achievements.isNotEmpty(),
         saveStatus = uiState.saveStatusInfo,
         downloadSizeBytes = uiState.downloadSizeBytes,
-        isPrivate = uiState.isPrivate,
-        hasSocialAccount = uiState.hasSocialAccount
+        isPrivate = uiState.isPrivate
     )
+
+    val focusedItem = menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, menuLayoutState)
 
     // Scroll to section when menu focus changes
     LaunchedEffect(uiState.menuFocusIndex) {
-        when (menuState.focusedItem) {
-            MenuItemType.DETAILS -> scrollState.animateScrollTo(0)
-            MenuItemType.DESCRIPTION -> scrollState.animateScrollTo(descriptionTopY.coerceAtLeast(0))
-            MenuItemType.SCREENSHOTS -> scrollState.animateScrollTo(screenshotTopY.coerceAtLeast(0))
-            MenuItemType.ACHIEVEMENTS -> scrollState.animateScrollTo(achievementTopY.coerceAtLeast(0))
-            else -> {} // Play, Favorite, Options don't trigger scroll
+        when (focusedItem) {
+            MenuItem.Details -> scrollState.animateScrollTo(0)
+            MenuItem.Description -> scrollState.animateScrollTo(descriptionTopY.coerceAtLeast(0))
+            MenuItem.Screenshots -> scrollState.animateScrollTo(screenshotTopY.coerceAtLeast(0))
+            MenuItem.Achievements -> scrollState.animateScrollTo(achievementTopY.coerceAtLeast(0))
+            else -> {}
         }
     }
 
     // Sync menu focus with scroll position (reverse direction)
     @OptIn(FlowPreview::class)
-    LaunchedEffect(scrollState, menuState.hasDescription, menuState.hasScreenshots, menuState.hasAchievements) {
+    LaunchedEffect(scrollState, menuLayoutState.hasDescription, menuLayoutState.hasScreenshots, menuLayoutState.hasAchievements) {
         snapshotFlow { scrollState.value }
             .debounce(100)
             .distinctUntilChanged()
             .collect { scrollY ->
-                val currentFocus = menuState.focusedItem
-                if (currentFocus !in listOf(MenuItemType.DETAILS, MenuItemType.DESCRIPTION, MenuItemType.SCREENSHOTS, MenuItemType.ACHIEVEMENTS)) {
+                val currentFocus = menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, menuLayoutState)
+                if (currentFocus !in listOf(MenuItem.Details, MenuItem.Description, MenuItem.Screenshots, MenuItem.Achievements)) {
                     return@collect
                 }
 
                 val visibleSection = when {
-                    menuState.hasAchievements && scrollY >= achievementTopY - 100 -> MenuItemType.ACHIEVEMENTS
-                    menuState.hasScreenshots && scrollY >= screenshotTopY - 100 -> MenuItemType.SCREENSHOTS
-                    menuState.hasDescription && scrollY >= descriptionTopY - 100 -> MenuItemType.DESCRIPTION
-                    else -> MenuItemType.DETAILS
+                    menuLayoutState.hasAchievements && scrollY >= achievementTopY - 100 -> MenuItem.Achievements
+                    menuLayoutState.hasScreenshots && scrollY >= screenshotTopY - 100 -> MenuItem.Screenshots
+                    menuLayoutState.hasDescription && scrollY >= descriptionTopY - 100 -> MenuItem.Description
+                    else -> MenuItem.Details
                 }
 
                 if (visibleSection != currentFocus) {
-                    val targetIndex = menuState.indexOfItem(visibleSection)
+                    val targetIndex = menuLayout.focusIndexOf(visibleSection, menuLayoutState)
                     if (targetIndex >= 0) {
                         viewModel.setMenuFocusIndex(targetIndex)
                     }
@@ -522,21 +526,22 @@ private fun GameDetailContent(
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
                     ) {
                         GameDetailMenu(
-                            state = menuState,
+                            layoutState = menuLayoutState,
+                            displayState = menuDisplayState,
                             onItemClick = { item ->
                                 when (item) {
-                                    MenuItemType.PLAY -> viewModel.primaryAction()
-                                    MenuItemType.FAVORITE -> viewModel.toggleFavorite()
-                                    MenuItemType.PRIVACY -> viewModel.togglePrivacy()
-                                    MenuItemType.OPTIONS -> viewModel.toggleMoreOptions()
-                                    MenuItemType.DETAILS -> coroutineScope.launch {
+                                    MenuItem.Play -> viewModel.primaryAction()
+                                    MenuItem.Favorite -> viewModel.toggleFavorite()
+                                    MenuItem.Privacy -> viewModel.togglePrivacy()
+                                    MenuItem.Options -> viewModel.toggleMoreOptions()
+                                    MenuItem.Details -> coroutineScope.launch {
                                         scrollState.animateScrollTo(0)
                                     }
-                                    MenuItemType.DESCRIPTION -> coroutineScope.launch {
+                                    MenuItem.Description -> coroutineScope.launch {
                                         scrollState.animateScrollTo(descriptionTopY.coerceAtLeast(0))
                                     }
-                                    MenuItemType.SCREENSHOTS -> viewModel.openScreenshotViewer()
-                                    MenuItemType.ACHIEVEMENTS -> coroutineScope.launch {
+                                    MenuItem.Screenshots -> viewModel.openScreenshotViewer()
+                                    MenuItem.Achievements -> coroutineScope.launch {
                                         scrollState.animateScrollTo(achievementTopY.coerceAtLeast(0))
                                     }
                                 }
@@ -586,9 +591,9 @@ private fun GameDetailContent(
                                         screenshotTopY = y
                                         onScreenshotPositioned(y)
                                     },
-                                    isActive = menuState.focusedItem == MenuItemType.SCREENSHOTS,
+                                    isActive = focusedItem == MenuItem.Screenshots,
                                     onSectionFocus = {
-                                        viewModel.setMenuFocusIndex(menuState.indexOfItem(MenuItemType.SCREENSHOTS))
+                                        viewModel.setMenuFocusIndex(menuLayout.focusIndexOf(MenuItem.Screenshots, menuLayoutState))
                                     }
                                 )
                                 Spacer(modifier = Modifier.height(Dimens.spacingLg))
@@ -602,7 +607,7 @@ private fun GameDetailContent(
                                         achievementTopY = y
                                         onAchievementPositioned(y)
                                     },
-                                    isActive = menuState.focusedItem == MenuItemType.ACHIEVEMENTS
+                                    isActive = focusedItem == MenuItem.Achievements
                                 )
                                 Spacer(modifier = Modifier.height(Dimens.spacingLg))
                             }
@@ -633,17 +638,16 @@ private fun GameDetailContent(
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                val focusedItem = menuState.focusedItem
                 val canShowPlayOptions = uiState.downloadStatus == GameDownloadStatus.DOWNLOADED &&
                     game.isBuiltInEmulator
                 FooterBar(
                     hints = buildList {
                         add(InputButton.LB_RB to "Prev/Next Game")
-                        if (focusedItem == MenuItemType.SCREENSHOTS || focusedItem == MenuItemType.ACHIEVEMENTS) {
+                        if (focusedItem == MenuItem.Screenshots || focusedItem == MenuItem.Achievements) {
                             add(InputButton.DPAD_HORIZONTAL to "Scroll")
                         }
                         when (focusedItem) {
-                            MenuItemType.PLAY -> add(InputButton.A to when {
+                            MenuItem.Play -> add(InputButton.A to when {
                                 isAnySyncing -> "Syncing..."
                                 uiState.downloadStatus == GameDownloadStatus.DOWNLOADED -> "Play"
                                 uiState.downloadStatus == GameDownloadStatus.NEEDS_INSTALL -> "Install"
@@ -655,15 +659,15 @@ private fun GameDetailContent(
                                 uiState.downloadStatus == GameDownloadStatus.PAUSED -> "Paused"
                                 else -> "Play"
                             })
-                            MenuItemType.FAVORITE -> add(InputButton.A to if (game.isFavorite) "Unfavorite" else "Favorite")
-                            MenuItemType.PRIVACY -> add(InputButton.A to if (uiState.isPrivate) "Make Public" else "Make Private")
-                            MenuItemType.OPTIONS -> add(InputButton.A to "Options")
-                            MenuItemType.SCREENSHOTS -> add(InputButton.A to "View")
-                            MenuItemType.ACHIEVEMENTS -> add(InputButton.A to "View All")
-                            MenuItemType.DETAILS, MenuItemType.DESCRIPTION, null -> {} // No A button action
+                            MenuItem.Favorite -> add(InputButton.A to if (game.isFavorite) "Unfavorite" else "Favorite")
+                            MenuItem.Privacy -> add(InputButton.A to if (uiState.isPrivate) "Make Public" else "Make Private")
+                            MenuItem.Options -> add(InputButton.A to "Options")
+                            MenuItem.Screenshots -> add(InputButton.A to "View")
+                            MenuItem.Achievements -> add(InputButton.A to "View All")
+                            MenuItem.Details, MenuItem.Description, null -> {}
                         }
                         add(InputButton.B to "Back")
-                        if (canShowPlayOptions && focusedItem == MenuItemType.PLAY) {
+                        if (canShowPlayOptions && focusedItem == MenuItem.Play) {
                             add(InputButton.X to "New Game")
                         } else if (uiState.hasSocialAccount && game.igdbId != null) {
                             add(InputButton.X to if (uiState.isPrivate) "Make Public" else "Make Private")

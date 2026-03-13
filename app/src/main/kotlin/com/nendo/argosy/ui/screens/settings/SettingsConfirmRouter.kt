@@ -370,6 +370,8 @@ private fun routeControlsConfirm(vm: SettingsViewModel, state: SettingsUiState):
         ControlsItem.SwapAB -> { vm.setSwapAB(!state.controls.swapAB); return InputResult.handled(SoundType.TOGGLE) }
         ControlsItem.SwapXY -> { vm.setSwapXY(!state.controls.swapXY); return InputResult.handled(SoundType.TOGGLE) }
         ControlsItem.SwapStartSelect -> { vm.setSwapStartSelect(!state.controls.swapStartSelect); return InputResult.handled(SoundType.TOGGLE) }
+        ControlsItem.SelectLCombo -> vm.cycleSelectLCombo()
+        ControlsItem.SelectRCombo -> vm.cycleSelectRCombo()
         null -> {}
     }
     return InputResult.HANDLED

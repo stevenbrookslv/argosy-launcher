@@ -28,6 +28,8 @@ import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -130,6 +132,8 @@ class SocialRepository @Inject constructor(
 
     private val _hiddenGameIds = MutableStateFlow<Set<Int>>(emptySet())
     val hiddenGameIds: StateFlow<Set<Int>> = _hiddenGameIds.asStateFlow()
+    private var hiddenGameToggleJob: Job? = null
+    private var pendingToggleGameId: Int? = null
 
     private val _usersCache = mutableMapOf<String, SocialUser>()
 
@@ -424,9 +428,17 @@ class SocialRepository @Inject constructor(
                         Log.d(TAG, "UserSettings: autoShare=${message.settings.communityAutoShare}")
                     }
                     is ArgosSocialService.IncomingMessage.HiddenGames -> {
-                        _hiddenGameIds.value = message.igdbGameIds
-                        syncPreferencesRepository.setHiddenGameIds(message.igdbGameIds)
-                        Log.d(TAG, "HiddenGames: ${message.igdbGameIds.size} games")
+                        val pending = pendingToggleGameId
+                        val merged = if (pending != null && hiddenGameToggleJob?.isActive == true) {
+                            val localHas = pending in _hiddenGameIds.value
+                            val serverIds = message.igdbGameIds - pending
+                            if (localHas) serverIds + pending else serverIds
+                        } else {
+                            message.igdbGameIds
+                        }
+                        _hiddenGameIds.value = merged
+                        syncPreferencesRepository.setHiddenGameIds(merged)
+                        Log.d(TAG, "HiddenGames: ${message.igdbGameIds.size} from server, pending=$pending")
                     }
                     is ArgosSocialService.IncomingMessage.Error -> {
                         if (message.code == "unknown_type") {
@@ -536,9 +548,18 @@ class SocialRepository @Inject constructor(
         if (!socialService.isConnected()) return
         val isHidden = igdbGameId in _hiddenGameIds.value
         if (isHidden) {
+            _hiddenGameIds.value = _hiddenGameIds.value - igdbGameId
             socialService.sendUnhideGame(igdbGameId)
         } else {
+            _hiddenGameIds.value = _hiddenGameIds.value + igdbGameId
             socialService.sendHideGame(igdbGameId)
+        }
+        pendingToggleGameId = igdbGameId
+        hiddenGameToggleJob?.cancel()
+        hiddenGameToggleJob = scope.launch {
+            delay(500)
+            syncPreferencesRepository.setHiddenGameIds(_hiddenGameIds.value)
+            pendingToggleGameId = null
         }
     }
 

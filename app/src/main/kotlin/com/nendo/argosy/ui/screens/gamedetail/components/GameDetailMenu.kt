@@ -45,19 +45,41 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.util.clickableNoFocus
 
-enum class MenuItemType {
-    PLAY,
-    FAVORITE,
-    PRIVACY,
-    OPTIONS,
-    DETAILS,
-    DESCRIPTION,
-    SCREENSHOTS,
-    ACHIEVEMENTS
+data class MenuLayoutState(
+    val hasDescription: Boolean = false,
+    val hasScreenshots: Boolean = false,
+    val hasAchievements: Boolean = false,
+    val hasSocialAccount: Boolean = false
+)
+
+sealed class MenuItem(
+    val key: String,
+    val visibleWhen: (MenuLayoutState) -> Boolean = { true }
+) {
+    data object Play : MenuItem("play")
+    data object Favorite : MenuItem("favorite")
+    data object Privacy : MenuItem("privacy", visibleWhen = { it.hasSocialAccount })
+    data object Options : MenuItem("options")
+    data object Details : MenuItem("details")
+    data object Description : MenuItem("description", visibleWhen = { it.hasDescription })
+    data object Screenshots : MenuItem("screenshots", visibleWhen = { it.hasScreenshots })
+    data object Achievements : MenuItem("achievements", visibleWhen = { it.hasAchievements })
+
+    companion object {
+        val ALL = listOf(Play, Favorite, Privacy, Options, Details, Description, Screenshots, Achievements)
+    }
 }
+
+val menuLayout = SettingsLayout<MenuItem, MenuLayoutState>(
+    allItems = MenuItem.ALL,
+    isFocusable = { true },
+    visibleWhen = { item, state -> item.visibleWhen(state) },
+    sectionOf = { null }
+)
 
 data class GameDetailMenuState(
     val focusedIndex: Int = 0,
@@ -66,41 +88,21 @@ data class GameDetailMenuState(
     val isExtracting: Boolean = false,
     val downloadProgress: Float = 0f,
     val isFavorite: Boolean = false,
-    val hasDescription: Boolean = true,
-    val hasScreenshots: Boolean = true,
-    val hasAchievements: Boolean = false,
     val saveStatus: SaveStatusInfo? = null,
     val downloadSizeBytes: Long? = null,
-    val isPrivate: Boolean = false,
-    val hasSocialAccount: Boolean = false
-) {
-    val menuItems: List<MenuItemType>
-        get() = buildList {
-            add(MenuItemType.PLAY)
-            add(MenuItemType.FAVORITE)
-            if (hasSocialAccount) add(MenuItemType.PRIVACY)
-            add(MenuItemType.OPTIONS)
-            add(MenuItemType.DETAILS)
-            if (hasDescription) add(MenuItemType.DESCRIPTION)
-            if (hasScreenshots) add(MenuItemType.SCREENSHOTS)
-            if (hasAchievements) add(MenuItemType.ACHIEVEMENTS)
-        }
-
-    val focusedItem: MenuItemType?
-        get() = menuItems.getOrNull(focusedIndex)
-
-    fun indexOfItem(item: MenuItemType): Int = menuItems.indexOf(item)
-}
+    val isPrivate: Boolean = false
+)
 
 @Composable
 fun GameDetailMenu(
-    state: GameDetailMenuState,
-    onItemClick: (MenuItemType) -> Unit,
+    layoutState: MenuLayoutState,
+    displayState: GameDetailMenuState,
+    onItemClick: (MenuItem) -> Unit,
     onFocusChange: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
     isCompact: Boolean = false
 ) {
-    val menuItems = state.menuItems
+    val visibleItems = menuLayout.visibleItems(layoutState)
 
     Column(
         modifier = modifier
@@ -110,47 +112,48 @@ fun GameDetailMenu(
         horizontalAlignment = if (isCompact) Alignment.CenterHorizontally else Alignment.Start
     ) {
 
-        menuItems.forEachIndexed { index, item ->
-            val isFocused = index == state.focusedIndex
+        visibleItems.forEach { item ->
+            val focusIndex = menuLayout.focusIndexOf(item, layoutState)
+            val isFocused = focusIndex == displayState.focusedIndex
 
             when (item) {
-                MenuItemType.PLAY -> {
+                MenuItem.Play -> {
                     PlayMenuItem(
-                        isDownloaded = state.isDownloaded,
-                        isDownloading = state.isDownloading,
-                        isExtracting = state.isExtracting,
-                        downloadProgress = state.downloadProgress,
+                        isDownloaded = displayState.isDownloaded,
+                        isDownloading = displayState.isDownloading,
+                        isExtracting = displayState.isExtracting,
+                        downloadProgress = displayState.downloadProgress,
                         isFocused = isFocused,
-                        saveStatus = state.saveStatus,
-                        downloadSizeBytes = state.downloadSizeBytes,
+                        saveStatus = displayState.saveStatus,
+                        downloadSizeBytes = displayState.downloadSizeBytes,
                         isCompact = isCompact,
-                        onClick = { onFocusChange(index); onItemClick(item) }
+                        onClick = { onFocusChange(focusIndex); onItemClick(item) }
                     )
                 }
 
-                MenuItemType.FAVORITE -> {
+                MenuItem.Favorite -> {
                     FavoriteMenuItem(
-                        isFavorite = state.isFavorite,
+                        isFavorite = displayState.isFavorite,
                         isFocused = isFocused,
                         isCompact = isCompact,
-                        onClick = { onFocusChange(index); onItemClick(item) }
+                        onClick = { onFocusChange(focusIndex); onItemClick(item) }
                     )
                 }
 
-                MenuItemType.PRIVACY -> {
+                MenuItem.Privacy -> {
                     PrivacyMenuItem(
-                        isPrivate = state.isPrivate,
+                        isPrivate = displayState.isPrivate,
                         isFocused = isFocused,
                         isCompact = isCompact,
-                        onClick = { onFocusChange(index); onItemClick(item) }
+                        onClick = { onFocusChange(focusIndex); onItemClick(item) }
                     )
                 }
 
-                MenuItemType.OPTIONS -> {
+                MenuItem.Options -> {
                     OptionsMenuItem(
                         isFocused = isFocused,
                         isCompact = isCompact,
-                        onClick = { onFocusChange(index); onItemClick(item) }
+                        onClick = { onFocusChange(focusIndex); onItemClick(item) }
                     )
                     Spacer(modifier = Modifier.height(Dimens.spacingXs))
                     HorizontalDivider(
@@ -160,44 +163,43 @@ fun GameDetailMenu(
                     Spacer(modifier = Modifier.height(Dimens.spacingXs))
                 }
 
-                MenuItemType.DETAILS -> {
+                MenuItem.Details -> {
                     IconTextMenuItem(
                         label = "Details",
                         icon = Icons.Default.Info,
                         isFocused = isFocused,
                         isCompact = isCompact,
-                        onClick = { onFocusChange(index); onItemClick(item) }
+                        onClick = { onFocusChange(focusIndex); onItemClick(item) }
                     )
                 }
 
-                MenuItemType.DESCRIPTION -> {
+                MenuItem.Description -> {
                     IconTextMenuItem(
                         label = "Description",
                         icon = Icons.Default.Description,
                         isFocused = isFocused,
                         isCompact = isCompact,
-                        onClick = { onFocusChange(index); onItemClick(item) }
+                        onClick = { onFocusChange(focusIndex); onItemClick(item) }
                     )
                 }
 
-                MenuItemType.SCREENSHOTS -> {
+                MenuItem.Screenshots -> {
                     IconTextMenuItem(
                         label = "Screenshots",
                         icon = Icons.Default.Image,
                         isFocused = isFocused,
                         isCompact = isCompact,
-                        onClick = { onFocusChange(index); onItemClick(item) }
+                        onClick = { onFocusChange(focusIndex); onItemClick(item) }
                     )
                 }
 
-                MenuItemType.ACHIEVEMENTS -> {
+                MenuItem.Achievements -> {
                     IconTextMenuItem(
                         label = "Achievements",
                         icon = Icons.Default.EmojiEvents,
                         isFocused = isFocused,
-                        isEnabled = state.hasAchievements,
                         isCompact = isCompact,
-                        onClick = { onFocusChange(index); onItemClick(item) }
+                        onClick = { onFocusChange(focusIndex); onItemClick(item) }
                     )
                 }
             }

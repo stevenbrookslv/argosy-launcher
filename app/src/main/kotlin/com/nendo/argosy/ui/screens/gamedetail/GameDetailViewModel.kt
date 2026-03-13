@@ -21,6 +21,9 @@ import com.nendo.argosy.data.remote.ra.RAConsoleIds
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.repository.GameRepository
+import com.nendo.argosy.ui.screens.gamedetail.components.MenuItem
+import com.nendo.argosy.ui.screens.gamedetail.components.MenuLayoutState
+import com.nendo.argosy.ui.screens.gamedetail.components.menuLayout
 import com.nendo.argosy.ui.screens.gamedetail.components.SaveStatusEvent
 import com.nendo.argosy.ui.screens.gamedetail.components.SaveStatusInfo
 import com.nendo.argosy.domain.usecase.cache.RepairImageCacheUseCase
@@ -49,7 +52,10 @@ import com.nendo.argosy.ui.screens.gamedetail.delegates.SaveManagementDelegate
 import com.nendo.argosy.ui.screens.gamedetail.delegates.ScreenshotDelegate
 import com.nendo.argosy.ui.ModalResetSignal
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -293,9 +299,13 @@ class GameDetailViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            socialRepository.hiddenGameIds.collect { hiddenIds ->
-                val igdbId = _uiState.value.game?.igdbId
-                _uiState.update { it.copy(isPrivate = igdbId != null && igdbId.toInt() in hiddenIds) }
+            combine(
+                socialRepository.hiddenGameIds,
+                _uiState.map { it.game?.igdbId }.distinctUntilChanged()
+            ) { hiddenIds, igdbId ->
+                igdbId != null && igdbId.toInt() in hiddenIds
+            }.distinctUntilChanged().collect { isPrivate ->
+                _uiState.update { it.copy(isPrivate = isPrivate) }
             }
         }
 
@@ -1196,53 +1206,42 @@ class GameDetailViewModel @Inject constructor(
 
     // --- Menu ---
 
-    fun getMenuItemCount(): Int {
-        val game = _uiState.value.game ?: return 4
-        return getMenuItems().size
+    private fun menuLayoutState(): MenuLayoutState {
+        val game = _uiState.value.game
+        return MenuLayoutState(
+            hasDescription = !game?.description.isNullOrBlank(),
+            hasScreenshots = game?.screenshots?.isNotEmpty() == true,
+            hasAchievements = game?.achievements?.isNotEmpty() == true,
+            hasSocialAccount = _uiState.value.hasSocialAccount
+        )
     }
 
     fun moveMenuFocus(delta: Int) {
-        val menuItemCount = getMenuItemCount()
-        if (menuItemCount == 0) return
+        val maxIndex = menuLayout.maxFocusIndex(menuLayoutState())
         _uiState.update { state ->
-            val newIndex = (state.menuFocusIndex + delta).coerceIn(0, menuItemCount - 1)
+            val newIndex = (state.menuFocusIndex + delta).coerceIn(0, maxIndex)
             state.copy(menuFocusIndex = newIndex)
         }
     }
 
     fun setMenuFocusIndex(index: Int) {
-        val menuItemCount = getMenuItemCount()
-        if (menuItemCount == 0) return
+        val maxIndex = menuLayout.maxFocusIndex(menuLayoutState())
         _uiState.update { state ->
-            state.copy(menuFocusIndex = index.coerceIn(0, menuItemCount - 1))
+            state.copy(menuFocusIndex = index.coerceIn(0, maxIndex))
         }
     }
-
-    fun getFocusedMenuItemIndex(): Int = _uiState.value.menuFocusIndex
-
-    enum class MenuAction { PLAY, FAVORITE, OPTIONS, DETAILS, DESCRIPTION, SCREENSHOTS, ACHIEVEMENTS }
-
-    fun getMenuItems(): List<MenuAction> {
-        val game = _uiState.value.game ?: return listOf(MenuAction.PLAY, MenuAction.FAVORITE, MenuAction.OPTIONS, MenuAction.DETAILS)
-        return buildList {
-            add(MenuAction.PLAY); add(MenuAction.FAVORITE); add(MenuAction.OPTIONS); add(MenuAction.DETAILS)
-            if (!game.description.isNullOrBlank()) add(MenuAction.DESCRIPTION)
-            if (game.screenshots.isNotEmpty()) add(MenuAction.SCREENSHOTS)
-            if (game.achievements.isNotEmpty()) add(MenuAction.ACHIEVEMENTS)
-        }
-    }
-
-    fun getFocusedMenuAction(): MenuAction? = getMenuItems().getOrNull(_uiState.value.menuFocusIndex)
 
     fun executeMenuAction() {
-        when (getFocusedMenuAction()) {
-            MenuAction.PLAY -> primaryAction()
-            MenuAction.FAVORITE -> toggleFavorite()
-            MenuAction.OPTIONS -> toggleMoreOptions()
-            MenuAction.DETAILS -> {}
-            MenuAction.DESCRIPTION -> {}
-            MenuAction.SCREENSHOTS -> openScreenshotViewer()
-            MenuAction.ACHIEVEMENTS -> showAchievementList()
+        val state = menuLayoutState()
+        when (menuLayout.itemAtFocusIndex(_uiState.value.menuFocusIndex, state)) {
+            MenuItem.Play -> primaryAction()
+            MenuItem.Favorite -> toggleFavorite()
+            MenuItem.Privacy -> togglePrivacy()
+            MenuItem.Options -> toggleMoreOptions()
+            MenuItem.Details -> {}
+            MenuItem.Description -> {}
+            MenuItem.Screenshots -> openScreenshotViewer()
+            MenuItem.Achievements -> showAchievementList()
             null -> {}
         }
     }

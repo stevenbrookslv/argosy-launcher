@@ -558,13 +558,13 @@ class ArgosSocialService @Inject constructor(
                 }
 
                 MessageTypes.HIDDEN_GAMES -> {
-                    val gamesArray = payload?.optJSONArray("games")
-                    val ids = if (gamesArray != null) {
-                        (0 until gamesArray.length()).map { i ->
-                            gamesArray.getJSONObject(i).getInt("igdb_game_id")
+                    val idsArray = payload?.optJSONArray("igdb_game_ids")
+                    val ids = if (idsArray != null) {
+                        (0 until idsArray.length()).map { i ->
+                            idsArray.getInt(i)
                         }.toSet()
                     } else emptySet()
-                    Log.d(TAG, "HIDDEN_GAMES: ${ids.size} hidden games")
+                    Log.d(TAG, "HIDDEN_GAMES: ${ids.size} hidden games: $ids")
                     IncomingMessage.HiddenGames(ids)
                 }
 
