@@ -17,6 +17,7 @@ import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.ControlsState
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
+import com.nendo.argosy.ui.screens.settings.delegates.ControlsSettingsDelegate
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 
@@ -33,10 +34,12 @@ internal sealed class ControlsItem(
     data object SwapAB : ControlsItem("swapAB")
     data object SwapXY : ControlsItem("swapXY")
     data object SwapStartSelect : ControlsItem("swapStartSelect")
+    data object SelectLCombo : ControlsItem("selectLCombo")
+    data object SelectRCombo : ControlsItem("selectRCombo")
     companion object {
         val ALL: List<ControlsItem> = listOf(
             HapticFeedback, VibrationStrength, ControllerLayout,
-            SwapAB, SwapXY, SwapStartSelect
+            SwapAB, SwapXY, SwapStartSelect, SelectLCombo, SelectRCombo
         )
     }
 }
@@ -137,6 +140,22 @@ fun ControlsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     isEnabled = controls.swapStartSelect,
                     isFocused = isFocused(item),
                     onToggle = { viewModel.setSwapStartSelect(it) }
+                )
+
+                ControlsItem.SelectLCombo -> CyclePreference(
+                    title = "Select + L",
+                    value = ControlsSettingsDelegate.comboDisplayName(controls.selectLCombo),
+                    subtitle = "Hold Select and press L1",
+                    isFocused = isFocused(item),
+                    onClick = { viewModel.cycleSelectLCombo() }
+                )
+
+                ControlsItem.SelectRCombo -> CyclePreference(
+                    title = "Select + R",
+                    value = ControlsSettingsDelegate.comboDisplayName(controls.selectRCombo),
+                    subtitle = "Hold Select and press R1",
+                    isFocused = isFocused(item),
+                    onClick = { viewModel.cycleSelectRCombo() }
                 )
 
             }

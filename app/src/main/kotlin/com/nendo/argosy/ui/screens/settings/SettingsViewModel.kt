@@ -517,6 +517,8 @@ class SettingsViewModel @Inject constructor(
     fun cycleControllerLayout() = controlsDelegate.cycleControllerLayout(viewModelScope)
     fun refreshDetectedLayout() = controlsDelegate.refreshDetectedLayout()
     fun setSwapStartSelect(enabled: Boolean) = controlsDelegate.setSwapStartSelect(viewModelScope, enabled)
+    fun cycleSelectLCombo() = controlsDelegate.cycleSelectLCombo(viewModelScope)
+    fun cycleSelectRCombo() = controlsDelegate.cycleSelectRCombo(viewModelScope)
     fun setAccuratePlayTimeEnabled(enabled: Boolean) = controlsDelegate.setAccuratePlayTimeEnabled(viewModelScope, enabled)
     fun refreshUsageStatsPermission() = controlsDelegate.refreshUsageStatsPermission()
     fun openUsageStatsSettings() = controlsDelegate.openUsageStatsSettings()

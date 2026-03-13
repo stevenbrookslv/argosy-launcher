@@ -115,6 +115,7 @@ fun ArgosyApp(
     val isQuickSettingsOpen by viewModel.isQuickSettingsOpen.collectAsState()
     val quickSettingsFocusIndex by viewModel.quickSettingsFocusIndex.collectAsState()
     val quickSettingsUiState by viewModel.quickSettingsState.collectAsState()
+    val quickSettingsDismissHint by viewModel.quickSettingsDismissHint.collectAsState()
     val screenDimmerPrefs by viewModel.screenDimmerPreferences.collectAsState()
     val isEmulatorRunning by viewModel.isEmulatorRunning.collectAsState()
     val quickMenuState by quickMenuViewModel.uiState.collectAsState()
@@ -1393,7 +1394,8 @@ fun ArgosyApp(
                     (context as? com.nendo.argosy.MainActivity)
                         ?.dualScreenManager?.swapRoles()
                 },
-                onDismiss = closeQuickSettings
+                onDismiss = closeQuickSettings,
+                dismissHint = quickSettingsDismissHint
             )
 
             // Save Conflict Modal

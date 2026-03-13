@@ -57,6 +57,10 @@ class GamepadInputHandler @Inject constructor(
     private var swapXY = false
     private var swapStartSelect = false
 
+    private enum class ModifierState { IDLE, HELD, COMBO_FIRED }
+    private var modifierState = ModifierState.IDLE
+    private var comboMap: Map<GamepadEvent, GamepadEvent> = emptyMap()
+
     var onActivity: (() -> Unit)? = null
     override var lastInputDevice: InputDevice? = null
         private set
@@ -70,20 +74,29 @@ class GamepadInputHandler @Inject constructor(
                 swapAB = prefs.swapAB
                 swapXY = prefs.swapXY
                 swapStartSelect = prefs.swapStartSelect
+                comboMap = buildComboMap(prefs.selectLCombo, prefs.selectRCombo)
             }
         }
+    }
+
+    private fun buildComboMap(selectL: String, selectR: String): Map<GamepadEvent, GamepadEvent> {
+        val map = mutableMapOf<GamepadEvent, GamepadEvent>()
+        comboActionToEvent(selectL)?.let { map[GamepadEvent.PrevSection] = it }
+        comboActionToEvent(selectR)?.let { map[GamepadEvent.NextSection] = it }
+        return map
+    }
+
+    private fun comboActionToEvent(action: String): GamepadEvent? = when (action) {
+        "quick_menu" -> GamepadEvent.LeftStickClick
+        "quick_settings" -> GamepadEvent.RightStickClick
+        else -> null
     }
 
     fun eventFlow(): Flow<GamepadEvent> = _events.asSharedFlow()
     fun homeEventFlow(): Flow<Unit> = _homeEvents.receiveAsFlow()
 
     fun injectEvent(event: GamepadEvent) {
-        val currentTime = System.currentTimeMillis()
-        if (currentTime < inputBlockedUntil) return
-        val lastTime = lastInputTimes[event] ?: 0L
-        if (currentTime - lastTime < inputDebounceMs) return
-        lastInputTimes[event] = currentTime
-        _events.tryEmit(event)
+        emitWithDebounce(event)
     }
 
     private val lastInputTimes = mutableMapOf<GamepadEvent, Long>()
@@ -102,6 +115,7 @@ class GamepadInputHandler @Inject constructor(
 
     override fun setRawKeyEventListener(listener: ((KeyEvent) -> Boolean)?) {
         rawKeyEventListener = listener
+        if (listener != null) modifierState = ModifierState.IDLE
     }
 
     override fun setRawMotionEventListener(listener: ((MotionEvent) -> Boolean)?) {
@@ -148,19 +162,49 @@ class GamepadInputHandler @Inject constructor(
             return listener(event)
         }
 
-        if (event.action != KeyEvent.ACTION_DOWN) return false
-
         val gamepadEvent = mapKeyToEvent(event.keyCode) ?: return false
 
-        val currentTime = System.currentTimeMillis()
-        if (currentTime < inputBlockedUntil) return true
+        // Select modifier: hold Select to enter alt-mode for combo shortcuts
+        if (gamepadEvent == GamepadEvent.Select && comboMap.isNotEmpty()) {
+            when (event.action) {
+                KeyEvent.ACTION_DOWN -> {
+                    modifierState = ModifierState.HELD
+                    return true
+                }
+                KeyEvent.ACTION_UP -> {
+                    val wasHeld = modifierState == ModifierState.HELD
+                    modifierState = ModifierState.IDLE
+                    if (wasHeld) {
+                        emitWithDebounce(GamepadEvent.Select)
+                    }
+                    return true
+                }
+            }
+        }
 
-        val lastTime = lastInputTimes[gamepadEvent] ?: 0L
-        if (currentTime - lastTime < inputDebounceMs) return true
-        lastInputTimes[gamepadEvent] = currentTime
+        if (event.action != KeyEvent.ACTION_DOWN) return false
 
-        _events.tryEmit(gamepadEvent)
+        // While Select is held, check combo map before normal dispatch
+        if (modifierState == ModifierState.HELD || modifierState == ModifierState.COMBO_FIRED) {
+            val comboEvent = comboMap[gamepadEvent]
+            if (comboEvent != null) {
+                modifierState = ModifierState.COMBO_FIRED
+                emitWithDebounce(comboEvent)
+                return true
+            }
+        }
+
+        emitWithDebounce(gamepadEvent)
         return true
+    }
+
+    private fun emitWithDebounce(event: GamepadEvent) {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime < inputBlockedUntil) return
+        val lastTime = lastInputTimes[event] ?: 0L
+        if (currentTime - lastTime < inputDebounceMs) return
+        lastInputTimes[event] = currentTime
+        _events.tryEmit(event)
     }
 
     override fun mapKeyToEvent(keyCode: Int): GamepadEvent? =

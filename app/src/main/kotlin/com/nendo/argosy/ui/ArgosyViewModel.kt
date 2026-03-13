@@ -721,6 +721,21 @@ class ArgosyViewModel @Inject constructor(
         initialValue = QuickSettingsUiState()
     )
 
+    val quickSettingsDismissHint: StateFlow<String> = preferencesRepository.userPreferences
+        .map { prefs ->
+            buildString {
+                append("Press B or R3")
+                if (prefs.selectLCombo == "quick_settings") append(" or Select+L")
+                if (prefs.selectRCombo == "quick_settings") append(" or Select+R")
+                append(" to close")
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = "Press B or R3 to close"
+        )
+
     val screenDimmerPreferences: StateFlow<ScreenDimmerPreferences> = preferencesRepository.userPreferences
         .map { prefs ->
             ScreenDimmerPreferences(

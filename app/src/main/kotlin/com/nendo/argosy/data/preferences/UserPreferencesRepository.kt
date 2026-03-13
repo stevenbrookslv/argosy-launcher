@@ -63,6 +63,8 @@ class UserPreferencesRepository @Inject constructor(
             swapXY = controls.swapXY,
             controllerLayout = controls.controllerLayout,
             swapStartSelect = controls.swapStartSelect,
+            selectLCombo = controls.selectLCombo,
+            selectRCombo = controls.selectRCombo,
             lastRommSync = sync.lastRommSync,
             lastFavoritesSync = sync.lastFavoritesSync,
             lastFavoritesCheck = sync.lastFavoritesCheck,
@@ -270,6 +272,8 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setSwapXY(enabled: Boolean) = controlsPrefs.setSwapXY(enabled)
     suspend fun setControllerLayout(layout: String) = controlsPrefs.setControllerLayout(layout)
     suspend fun setSwapStartSelect(enabled: Boolean) = controlsPrefs.setSwapStartSelect(enabled)
+    suspend fun setSelectLCombo(value: String) = controlsPrefs.setSelectLCombo(value)
+    suspend fun setSelectRCombo(value: String) = controlsPrefs.setSelectRCombo(value)
     suspend fun setAccuratePlayTimeEnabled(enabled: Boolean) = controlsPrefs.setAccuratePlayTimeEnabled(enabled)
     suspend fun setAmbientAudioEnabled(enabled: Boolean) = controlsPrefs.setAmbientAudioEnabled(enabled)
     suspend fun setAmbientAudioVolume(volume: Int) = controlsPrefs.setAmbientAudioVolume(volume)
@@ -461,6 +465,8 @@ data class UserPreferences(
     val swapXY: Boolean = false,
     val controllerLayout: String = "auto",
     val swapStartSelect: Boolean = false,
+    val selectLCombo: String = "quick_menu",
+    val selectRCombo: String = "quick_settings",
     val lastRommSync: Instant? = null,
     val lastFavoritesSync: Instant? = null,
     val lastFavoritesCheck: Instant? = null,

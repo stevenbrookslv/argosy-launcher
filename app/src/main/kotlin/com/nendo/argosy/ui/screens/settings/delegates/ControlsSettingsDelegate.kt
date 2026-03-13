@@ -117,6 +117,37 @@ class ControlsSettingsDelegate @Inject constructor(
         }
     }
 
+    fun cycleSelectLCombo(scope: CoroutineScope) {
+        val next = cycleComboValue(_state.value.selectLCombo)
+        scope.launch {
+            preferencesRepository.setSelectLCombo(next)
+            _state.update { it.copy(selectLCombo = next) }
+        }
+    }
+
+    fun cycleSelectRCombo(scope: CoroutineScope) {
+        val next = cycleComboValue(_state.value.selectRCombo)
+        scope.launch {
+            preferencesRepository.setSelectRCombo(next)
+            _state.update { it.copy(selectRCombo = next) }
+        }
+    }
+
+    companion object {
+        private val COMBO_CYCLE = listOf("quick_menu", "quick_settings", "none")
+
+        fun cycleComboValue(current: String): String {
+            val index = COMBO_CYCLE.indexOf(current)
+            return COMBO_CYCLE[(index + 1) % COMBO_CYCLE.size]
+        }
+
+        fun comboDisplayName(value: String): String = when (value) {
+            "quick_menu" -> "Quick Menu"
+            "quick_settings" -> "Quick Settings"
+            else -> "None"
+        }
+    }
+
     fun refreshUsageStatsPermission() {
         val hasPermission = permissionHelper.hasUsageStatsPermission(application)
         _state.update { it.copy(hasUsageStatsPermission = hasPermission) }

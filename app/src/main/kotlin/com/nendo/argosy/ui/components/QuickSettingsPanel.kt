@@ -176,6 +176,7 @@ fun QuickSettingsPanel(
     onBrightnessChange: (Float) -> Unit,
     onSwapDisplays: () -> Unit = {},
     onDismiss: () -> Unit,
+    dismissHint: String = "Press B or R3 to close",
     modifier: Modifier = Modifier
 ) {
     val permissionMissing = state.deviceSettingsSupported && !state.deviceSettingsEnabled
@@ -351,7 +352,7 @@ fun QuickSettingsPanel(
                 }
 
                 Text(
-                    text = "Press B or R3 to close",
+                    text = dismissHint,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier.padding(horizontal = Dimens.spacingLg)
