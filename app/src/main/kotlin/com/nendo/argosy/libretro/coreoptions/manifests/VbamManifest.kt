@@ -25,7 +25,12 @@ object VbamManifest : CoreOptionManifest {
             displayName = "(GB) Emulated Hardware",
             values = listOf("gbc", "auto", "sgb", "gb", "gba", "sgb2"),
             defaultValue = "gbc",
-            description = "Selects which Game Boy hardware variant to emulate"
+            description = "Selects which Game Boy hardware variant to emulate",
+            valueLabels = mapOf(
+                "gbc" to "Game Boy Color", "auto" to "Auto",
+                "sgb" to "Super Game Boy", "gb" to "Game Boy",
+                "gba" to "Game Boy Advance", "sgb2" to "Super Game Boy 2"
+            )
         ),
         CoreOptionDef(
             key = "vbam_allowcolorizerhack",
@@ -85,7 +90,12 @@ object VbamManifest : CoreOptionManifest {
             displayName = "Sound Filtering",
             values = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"),
             defaultValue = "5",
-            description = "Controls the amount of audio filtering applied to the sound output"
+            description = "Controls the amount of audio filtering applied to the sound output",
+            valueLabels = mapOf(
+                "0" to "Off", "1" to "10%", "2" to "20%", "3" to "30%",
+                "4" to "40%", "5" to "50%", "6" to "60%", "7" to "70%",
+                "8" to "80%", "9" to "90%", "10" to "100%"
+            )
         ),
         CoreOptionDef(
             key = "vbam_turboenable",
@@ -109,7 +119,8 @@ object VbamManifest : CoreOptionManifest {
             displayName = "Solar Sensor Level",
             values = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"),
             defaultValue = "0",
-            description = "Sets the simulated sunlight level for Boktai solar sensor games"
+            description = "Sets the simulated sunlight level for Boktai solar sensor games",
+            valueLabels = mapOf("0" to "Dark", "10" to "Brightest")
         ),
         CoreOptionDef(
             key = "vbam_astick_deadzone",

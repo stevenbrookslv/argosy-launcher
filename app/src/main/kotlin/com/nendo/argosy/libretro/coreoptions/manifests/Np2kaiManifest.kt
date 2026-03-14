@@ -25,14 +25,24 @@ object Np2kaiManifest : CoreOptionManifest {
             displayName = "CPU Clock Multiplier",
             values = listOf("1", "2", "4", "5", "6", "8", "10", "12", "16", "20", "24", "30", "36", "40", "42"),
             defaultValue = "4",
-            description = "Multiplies the base clock to set overall CPU speed"
+            description = "Multiplies the base clock to set overall CPU speed",
+            valueLabels = mapOf(
+                "1" to "1x", "2" to "2x", "4" to "4x", "5" to "5x", "6" to "6x",
+                "8" to "8x", "10" to "10x", "12" to "12x", "16" to "16x", "20" to "20x",
+                "24" to "24x", "30" to "30x", "36" to "36x", "40" to "40x", "42" to "42x"
+            )
         ),
         CoreOptionDef(
             key = "np2kai_ExMemory",
             displayName = "RAM Size",
             values = listOf("1", "3", "7", "11", "13", "16", "32", "64", "120", "230"),
             defaultValue = "3",
-            description = "Sets the amount of extended memory in megabytes"
+            description = "Sets the amount of extended memory in megabytes",
+            valueLabels = mapOf(
+                "1" to "1 MB", "3" to "3 MB", "7" to "7 MB", "11" to "11 MB",
+                "13" to "13 MB", "16" to "16 MB", "32" to "32 MB", "64" to "64 MB",
+                "120" to "120 MB", "230" to "230 MB"
+            )
         ),
         CoreOptionDef(
             key = "np2kai_gdc",
@@ -143,7 +153,8 @@ object Np2kaiManifest : CoreOptionManifest {
             key = "np2kai_BEEP_vol",
             displayName = "Volume Beep",
             values = listOf("0", "1", "2", "3"),
-            defaultValue = "3"
+            defaultValue = "3",
+            valueLabels = mapOf("0" to "Off", "1" to "Low", "2" to "Medium", "3" to "High")
         ),
         CoreOptionDef(
             key = "np2kai_joy2mouse",

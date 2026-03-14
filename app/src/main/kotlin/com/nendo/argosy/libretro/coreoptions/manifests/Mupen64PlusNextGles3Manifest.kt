@@ -19,14 +19,16 @@ object Mupen64PlusNextGles3Manifest : CoreOptionManifest {
             displayName = "Count Per Op",
             values = listOf("0", "1", "2", "3", "4", "5"),
             defaultValue = "0",
-            description = "Sets the number of cycles counted per CPU instruction (0 = auto)"
+            description = "Sets the number of cycles counted per CPU instruction",
+            valueLabels = mapOf("0" to "Auto", "1" to "1", "2" to "2", "3" to "3", "4" to "4", "5" to "5")
         ),
         CoreOptionDef(
             key = "mupen64plus-next-CountPerOpDenomPot",
             displayName = "Count Per Op Divider (Overclock)",
             values = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"),
             defaultValue = "0",
-            description = "Divides count-per-op to overclock the CPU (0 = disabled)"
+            description = "Divides count-per-op to overclock the CPU",
+            valueLabels = mapOf("0" to "Disabled")
         ),
         CoreOptionDef(
             key = "mupen64plus-next-ForceDisableExtraMem",
@@ -95,7 +97,11 @@ object Mupen64PlusNextGles3Manifest : CoreOptionManifest {
             displayName = "Native Resolution Factor",
             values = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8"),
             defaultValue = "0",
-            description = "Overrides screen size settings with a native resolution multiplier (0 = disabled)"
+            description = "Overrides screen size settings with a native resolution multiplier",
+            valueLabels = mapOf(
+                "0" to "Disabled", "1" to "1x", "2" to "2x", "3" to "3x", "4" to "4x",
+                "5" to "5x", "6" to "6x", "7" to "7x", "8" to "8x"
+            )
         ),
         CoreOptionDef(
             key = "mupen64plus-next-ThreadedRenderer",
@@ -144,14 +150,16 @@ object Mupen64PlusNextGles3Manifest : CoreOptionManifest {
             displayName = "MSAA level",
             values = listOf("0", "2", "4", "8", "16"),
             defaultValue = "0",
-            description = "Sets the multi-sample anti-aliasing level for smoother edges"
+            description = "Sets the multi-sample anti-aliasing level for smoother edges",
+            valueLabels = mapOf("0" to "Off", "2" to "2x", "4" to "4x", "8" to "8x", "16" to "16x")
         ),
         CoreOptionDef(
             key = "mupen64plus-next-FXAA",
             displayName = "FXAA",
             values = listOf("0", "1"),
             defaultValue = "0",
-            description = "Enables fast approximate anti-aliasing"
+            description = "Enables fast approximate anti-aliasing",
+            valueLabels = mapOf("0" to "Off", "1" to "On")
         ),
         CoreOptionDef(
             key = "mupen64plus-next-EnableLODEmulation",
@@ -313,14 +321,20 @@ object Mupen64PlusNextGles3Manifest : CoreOptionManifest {
             displayName = "Max High-Res VRAM Limit",
             values = listOf("0", "500", "1000", "1500", "2000", "2500", "3000", "3500", "4000"),
             defaultValue = "0",
-            description = "Limits VRAM usage for high-res textures in MB (0 = unlimited)"
+            description = "Limits VRAM usage for high-res textures",
+            valueLabels = mapOf(
+                "0" to "Unlimited", "500" to "500 MB", "1000" to "1000 MB", "1500" to "1500 MB",
+                "2000" to "2000 MB", "2500" to "2500 MB", "3000" to "3000 MB", "3500" to "3500 MB",
+                "4000" to "4000 MB"
+            )
         ),
         CoreOptionDef(
             key = "mupen64plus-next-MaxTxCacheSize",
             displayName = "Max texture cache size",
             values = listOf("1500", "4000", "8000"),
             defaultValue = "8000",
-            description = "Sets the maximum texture cache size in MB"
+            description = "Sets the maximum texture cache size",
+            valueLabels = mapOf("1500" to "1500 MB", "4000" to "4000 MB", "8000" to "8000 MB")
         ),
         CoreOptionDef(
             key = "mupen64plus-next-txFilterMode",
@@ -548,7 +562,8 @@ object Mupen64PlusNextGles3Manifest : CoreOptionManifest {
             displayName = "VI Refresh (Overclock)",
             values = listOf("Auto", "1500", "2200"),
             defaultValue = "Auto",
-            description = "Overclocks the video refresh rate to reduce lag in some games"
+            description = "Overclocks the video refresh rate to reduce lag in some games",
+            valueLabels = mapOf("1500" to "1500 VI/s", "2200" to "2200 VI/s")
         ),
         // Input
         CoreOptionDef(

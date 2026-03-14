@@ -11,14 +11,21 @@ object StellaManifest : CoreOptionManifest {
             displayName = "Console Display",
             values = listOf("auto", "ntsc", "pal", "secam", "ntsc50", "pal60", "secam60"),
             defaultValue = "auto",
-            description = "Sets the TV standard and refresh rate for the emulated console"
+            description = "Sets the TV standard and refresh rate for the emulated console",
+            valueLabels = mapOf(
+                "auto" to "Auto", "ntsc" to "NTSC", "pal" to "PAL", "secam" to "SECAM",
+                "ntsc50" to "NTSC 50 Hz", "pal60" to "PAL 60 Hz", "secam60" to "SECAM 60 Hz"
+            )
         ),
         CoreOptionDef(
             key = "stella_palette",
             displayName = "Palette Colors",
             values = listOf("standard", "z26", "user", "custom"),
             defaultValue = "standard",
-            description = "Selects the color palette used to render Atari 2600 graphics"
+            description = "Selects the color palette used to render Atari 2600 graphics",
+            valueLabels = mapOf(
+                "standard" to "Standard", "z26" to "z26", "user" to "User-defined", "custom" to "Custom"
+            )
         ),
         CoreOptionDef(
             key = "stella_filter",
@@ -58,7 +65,8 @@ object StellaManifest : CoreOptionManifest {
                 "125"
             ),
             defaultValue = "par",
-            description = "Adjusts the horizontal stretch for NTSC display output"
+            description = "Adjusts the horizontal stretch for NTSC display output",
+            valueLabels = mapOf("par" to "Pixel Aspect Ratio")
         ),
         CoreOptionDef(
             key = "stella_pal_aspect",
@@ -73,7 +81,8 @@ object StellaManifest : CoreOptionManifest {
                 "125"
             ),
             defaultValue = "par",
-            description = "Adjusts the horizontal stretch for PAL display output"
+            description = "Adjusts the horizontal stretch for PAL display output",
+            valueLabels = mapOf("par" to "Pixel Aspect Ratio")
         ),
         CoreOptionDef(
             key = "stella_stereo",
@@ -97,7 +106,14 @@ object StellaManifest : CoreOptionManifest {
                 "55", "60", "65", "70", "75", "80", "85", "90", "95", "100"
             ),
             defaultValue = "60",
-            description = "Sets how strongly the previous frame blends into the current one"
+            description = "Sets how strongly the previous frame blends into the current one",
+            valueLabels = mapOf(
+                "0" to "0%", "5" to "5%", "10" to "10%", "15" to "15%",
+                "20" to "20%", "25" to "25%", "30" to "30%", "35" to "35%",
+                "40" to "40%", "45" to "45%", "50" to "50%", "55" to "55%",
+                "60" to "60%", "65" to "65%", "70" to "70%", "75" to "75%",
+                "80" to "80%", "85" to "85%", "90" to "90%", "95" to "95%", "100" to "100%"
+            )
         ),
         CoreOptionDef(
             key = "stella_paddle_mouse_sensitivity",

@@ -40,7 +40,8 @@ object PcsxRearmedManifest : CoreOptionManifest {
             displayName = "Frameskip",
             values = listOf("0", "1", "2", "3"),
             defaultValue = "0",
-            description = "Sets how many frames to skip to improve performance"
+            description = "Sets how many frames to skip to improve performance",
+            valueLabels = mapOf("0" to "Off")
         ),
         CoreOptionDef(
             key = "pcsx_rearmed_dithering",
@@ -68,7 +69,8 @@ object PcsxRearmedManifest : CoreOptionManifest {
             displayName = "Threaded Rendering",
             values = listOf("disabled", "sync", "async"),
             defaultValue = "disabled",
-            description = "Offloads GPU rendering to a separate thread for better performance"
+            description = "Offloads GPU rendering to a separate thread for better performance",
+            valueLabels = mapOf("sync" to "Synchronous", "async" to "Asynchronous")
         ),
         CoreOptionDef(
             key = "pcsx_rearmed_neon_interlace_enable",
@@ -133,7 +135,8 @@ object PcsxRearmedManifest : CoreOptionManifest {
             displayName = "CD Access Method (Restart)",
             values = listOf("sync", "async", "precache"),
             defaultValue = "sync",
-            description = "Selects how the CD image is accessed during gameplay"
+            description = "Selects how the CD image is accessed during gameplay",
+            valueLabels = mapOf("sync" to "Synchronous", "async" to "Asynchronous", "precache" to "Pre-cache")
         ),
         // Input
         CoreOptionDef(

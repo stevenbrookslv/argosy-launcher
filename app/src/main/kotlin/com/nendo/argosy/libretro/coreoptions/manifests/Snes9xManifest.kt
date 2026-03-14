@@ -192,7 +192,8 @@ object Snes9xManifest : CoreOptionManifest {
                 "9", "10", "11", "12", "13", "14", "15", "16"
             ),
             defaultValue = "2",
-            description = "Sets the size of the Super Scope crosshair cursor"
+            description = "Sets the size of the Super Scope crosshair cursor",
+            valueLabels = mapOf("0" to "Off")
         ),
         CoreOptionDef(
             key = "snes9x_superscope_color",
@@ -217,7 +218,8 @@ object Snes9xManifest : CoreOptionManifest {
                 "9", "10", "11", "12", "13", "14", "15", "16"
             ),
             defaultValue = "4",
-            description = "Sets the size of the Justifier 1 crosshair cursor"
+            description = "Sets the size of the Justifier 1 crosshair cursor",
+            valueLabels = mapOf("0" to "Off")
         ),
         CoreOptionDef(
             key = "snes9x_justifier1_color",
@@ -242,7 +244,8 @@ object Snes9xManifest : CoreOptionManifest {
                 "9", "10", "11", "12", "13", "14", "15", "16"
             ),
             defaultValue = "4",
-            description = "Sets the size of the Justifier 2 crosshair cursor"
+            description = "Sets the size of the Justifier 2 crosshair cursor",
+            valueLabels = mapOf("0" to "Off")
         ),
         CoreOptionDef(
             key = "snes9x_justifier2_color",
@@ -267,7 +270,8 @@ object Snes9xManifest : CoreOptionManifest {
                 "9", "10", "11", "12", "13", "14", "15", "16"
             ),
             defaultValue = "2",
-            description = "Sets the size of the M.A.C.S. rifle crosshair cursor"
+            description = "Sets the size of the M.A.C.S. rifle crosshair cursor",
+            valueLabels = mapOf("0" to "Off")
         ),
         CoreOptionDef(
             key = "snes9x_rifle_color",

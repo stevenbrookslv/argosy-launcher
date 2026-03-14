@@ -69,7 +69,11 @@ object PicodriveManifest : CoreOptionManifest {
             key = "picodrive_sound_rate",
             displayName = "Audio Sample Rate (Hz)",
             values = listOf("16000", "22050", "32000", "44100", "native"),
-            defaultValue = "44100"
+            defaultValue = "44100",
+            valueLabels = mapOf(
+                "16000" to "16 kHz", "22050" to "22 kHz",
+                "32000" to "32 kHz", "44100" to "44.1 kHz", "native" to "Native"
+            )
         ),
         CoreOptionDef(
             key = "picodrive_fm_filter",

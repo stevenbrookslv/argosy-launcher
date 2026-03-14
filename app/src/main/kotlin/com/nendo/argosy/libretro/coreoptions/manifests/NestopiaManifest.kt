@@ -90,14 +90,20 @@ object NestopiaManifest : CoreOptionManifest {
             displayName = "RAM Power-on State",
             values = listOf("0x00", "0xFF", "random"),
             defaultValue = "0x00",
-            description = "Sets the initial value of RAM on startup, which some games depend on"
+            description = "Sets the initial value of RAM on startup, which some games depend on",
+            valueLabels = mapOf("0x00" to "All 0s", "0xFF" to "All 1s", "random" to "Random")
         ),
         CoreOptionDef(
             key = "nestopia_turbo_pulse",
             displayName = "Turbo Pulse Speed",
             values = listOf("2", "3", "4", "5", "6", "7", "8", "9"),
             defaultValue = "2",
-            description = "Sets how many frames between each turbo button press"
+            description = "Sets how many frames between each turbo button press",
+            valueLabels = mapOf(
+                "2" to "2 frames", "3" to "3 frames", "4" to "4 frames",
+                "5" to "5 frames", "6" to "6 frames", "7" to "7 frames",
+                "8" to "8 frames", "9" to "9 frames"
+            )
         )
     )
 }

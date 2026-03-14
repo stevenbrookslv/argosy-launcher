@@ -11,7 +11,12 @@ object MednafenVbManifest : CoreOptionManifest {
             displayName = "3D Mode",
             values = listOf("anaglyph", "cyberscope", "side-by-side", "vli", "hli"),
             defaultValue = "anaglyph",
-            description = "Selects how the Virtual Boy's stereoscopic 3D is displayed"
+            description = "Selects how the Virtual Boy's stereoscopic 3D is displayed",
+            valueLabels = mapOf(
+                "anaglyph" to "Anaglyph", "cyberscope" to "CyberScope",
+                "side-by-side" to "Side-by-Side",
+                "vli" to "Vertical Line Interlaced", "hli" to "Horizontal Line Interlaced"
+            )
         ),
         CoreOptionDef(
             key = "vb_anaglyph_preset",

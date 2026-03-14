@@ -253,7 +253,12 @@ object DosboxPureManifest : CoreOptionManifest {
             key = "dosbox_pure_audiorate",
             displayName = "Audio Sample Rate",
             values = listOf("8000", "11025", "16000", "22050", "32000", "32730", "44100", "48000", "49716"),
-            defaultValue = "48000"
+            defaultValue = "48000",
+            valueLabels = mapOf(
+                "8000" to "8 kHz", "11025" to "11 kHz", "16000" to "16 kHz",
+                "22050" to "22 kHz", "32000" to "32 kHz", "32730" to "33 kHz",
+                "44100" to "44.1 kHz", "48000" to "48 kHz", "49716" to "49.7 kHz"
+            )
         ),
         CoreOptionDef(
             key = "dosbox_pure_sblaster_type",

@@ -86,7 +86,8 @@ object MelondsManifest : CoreOptionManifest {
             displayName = "OpenGL Filtering",
             values = listOf("nearest", "linear"),
             defaultValue = "nearest",
-            description = "Sets the texture filtering method for OpenGL rendering"
+            description = "Sets the texture filtering method for OpenGL rendering",
+            valueLabels = mapOf("nearest" to "Nearest Neighbor", "linear" to "Bilinear")
         ),
         // Audio
         CoreOptionDef(
@@ -154,7 +155,8 @@ object MelondsManifest : CoreOptionManifest {
             displayName = "Hybrid Ratio (OpenGL Only)",
             values = listOf("2", "3"),
             defaultValue = "2",
-            description = "Sets the size ratio between the large and small screen in hybrid layout"
+            description = "Sets the size ratio between the large and small screen in hybrid layout",
+            valueLabels = mapOf("2" to "2:1", "3" to "3:1")
         ),
         // CPU Emulation
         CoreOptionDef(

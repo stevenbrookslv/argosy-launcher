@@ -49,7 +49,11 @@ object MgbaManifest : CoreOptionManifest {
             displayName = "Interframe Blending",
             values = listOf("OFF", "mix", "mix_smart", "lcd_ghosting", "lcd_ghosting_fast"),
             defaultValue = "OFF",
-            description = "Blends consecutive frames to simulate LCD ghosting or reduce flicker"
+            description = "Blends consecutive frames to simulate LCD ghosting or reduce flicker",
+            valueLabels = mapOf(
+                "OFF" to "Off", "mix" to "Mix", "mix_smart" to "Mix (Smart)",
+                "lcd_ghosting" to "LCD Ghosting", "lcd_ghosting_fast" to "LCD Ghosting (Fast)"
+            )
         ),
         CoreOptionDef(
             key = "mgba_audio_low_pass_filter",
@@ -82,7 +86,8 @@ object MgbaManifest : CoreOptionManifest {
                 "sensor", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"
             ),
             defaultValue = "0",
-            description = "Sets the simulated sunlight level for Boktai solar sensor cartridges"
+            description = "Sets the simulated sunlight level for Boktai solar sensor cartridges",
+            valueLabels = mapOf("sensor" to "Use Sensor", "0" to "Dark")
         ),
         CoreOptionDef(
             key = "mgba_force_gbp",
@@ -103,7 +108,11 @@ object MgbaManifest : CoreOptionManifest {
             displayName = "Frameskip",
             values = listOf("disabled", "auto", "auto_threshold", "fixed_interval"),
             defaultValue = "disabled",
-            description = "Selects the frameskip method used to improve performance"
+            description = "Selects the frameskip method used to improve performance",
+            valueLabels = mapOf(
+                "disabled" to "Disabled", "auto" to "Auto",
+                "auto_threshold" to "Auto (Threshold)", "fixed_interval" to "Fixed Interval"
+            )
         ),
         CoreOptionDef(
             key = "mgba_frameskip_threshold",
@@ -120,7 +129,8 @@ object MgbaManifest : CoreOptionManifest {
             displayName = "Frameskip Interval",
             values = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"),
             defaultValue = "0",
-            description = "Sets how many frames to skip between each rendered frame"
+            description = "Sets how many frames to skip between each rendered frame",
+            valueLabels = mapOf("0" to "None")
         ),
     )
 }

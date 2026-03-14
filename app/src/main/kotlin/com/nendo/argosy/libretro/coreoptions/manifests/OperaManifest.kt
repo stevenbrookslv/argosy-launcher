@@ -36,7 +36,12 @@ object OperaManifest : CoreOptionManifest {
             displayName = "Active Devices",
             values = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8"),
             defaultValue = "1",
-            description = "Sets the number of connected controller devices"
+            description = "Sets the number of connected controller devices",
+            valueLabels = mapOf(
+                "0" to "None", "1" to "1 player", "2" to "2 players", "3" to "3 players",
+                "4" to "4 players", "5" to "5 players", "6" to "6 players",
+                "7" to "7 players", "8" to "8 players"
+            )
         ),
         CoreOptionDef(
             key = "opera_hack_timing_1",

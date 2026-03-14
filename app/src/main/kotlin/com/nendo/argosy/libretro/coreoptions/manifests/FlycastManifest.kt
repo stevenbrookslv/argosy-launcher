@@ -105,7 +105,8 @@ object FlycastManifest : CoreOptionManifest {
             displayName = "Anisotropic Filtering",
             values = listOf("2", "4", "8", "16"),
             defaultValue = "4",
-            description = "Improves texture clarity at steep viewing angles"
+            description = "Improves texture clarity at steep viewing angles",
+            valueLabels = mapOf("2" to "2x", "4" to "4x", "8" to "8x", "16" to "16x")
         ),
         CoreOptionDef(
             key = "flycast_delay_frame_swapping",
@@ -142,7 +143,11 @@ object FlycastManifest : CoreOptionManifest {
             displayName = "Frame Skipping",
             values = listOf("disabled", "1", "2", "3", "4", "5", "6"),
             defaultValue = "disabled",
-            description = "Sets how many frames to skip between each rendered frame"
+            description = "Sets how many frames to skip between each rendered frame",
+            valueLabels = mapOf(
+                "disabled" to "Off", "1" to "1 frame", "2" to "2 frames",
+                "3" to "3 frames", "4" to "4 frames", "5" to "5 frames", "6" to "6 frames"
+            )
         ),
         CoreOptionDef(
             key = "flycast_widescreen_cheats",

@@ -58,7 +58,12 @@ object ViceX64Manifest : CoreOptionManifest {
             displayName = "Automatic Load Warp",
             values = listOf("disabled", "enabled", "mute", "disk", "disk_mute", "tape", "tape_mute"),
             defaultValue = "disabled",
-            description = "Activates warp speed during disk or tape loading"
+            description = "Activates warp speed during disk or tape loading",
+            valueLabels = mapOf(
+                "disabled" to "Off", "enabled" to "On", "mute" to "On (muted)",
+                "disk" to "Disk only", "disk_mute" to "Disk only (muted)",
+                "tape" to "Tape only", "tape_mute" to "Tape only (muted)"
+            )
         ),
         CoreOptionDef(
             key = "vice_warp_boost",
@@ -114,7 +119,13 @@ object ViceX64Manifest : CoreOptionManifest {
             displayName = "Global Work Disk",
             values = listOf("disabled", "8_d64", "9_d64", "8_d71", "9_d71", "8_d81", "9_d81", "8_fs", "9_fs"),
             defaultValue = "disabled",
-            description = "Attaches a work disk for saving data across sessions"
+            description = "Attaches a work disk for saving data across sessions",
+            valueLabels = mapOf(
+                "disabled" to "Disabled", "8_d64" to "Drive 8 (D64)", "9_d64" to "Drive 9 (D64)",
+                "8_d71" to "Drive 8 (D71)", "9_d71" to "Drive 9 (D71)",
+                "8_d81" to "Drive 8 (D81)", "9_d81" to "Drive 9 (D81)",
+                "8_fs" to "Drive 8 (Filesystem)", "9_fs" to "Drive 9 (Filesystem)"
+            )
         ),
         CoreOptionDef(
             key = "vice_video_options_display",
@@ -127,7 +138,8 @@ object ViceX64Manifest : CoreOptionManifest {
             key = "vice_aspect_ratio",
             displayName = "Pixel Aspect Ratio",
             values = listOf("auto", "pal", "ntsc", "raw"),
-            defaultValue = "auto"
+            defaultValue = "auto",
+            valueLabels = mapOf("auto" to "Auto", "pal" to "PAL", "ntsc" to "NTSC", "raw" to "Raw (1:1)")
         ),
         CoreOptionDef(
             key = "vice_crop",
@@ -154,14 +166,20 @@ object ViceX64Manifest : CoreOptionManifest {
             key = "vice_gfx_colors",
             displayName = "Color Depth",
             values = listOf("16bit", "24bit"),
-            defaultValue = "24bit"
+            defaultValue = "24bit",
+            valueLabels = mapOf("16bit" to "16-bit", "24bit" to "24-bit")
         ),
         CoreOptionDef(
             key = "vice_vicii_filter",
             displayName = "VIC-II Filter",
             values = listOf("disabled", "enabled_noblur", "enabled_lowblur", "enabled_medblur", "enabled"),
             defaultValue = "disabled",
-            description = "Applies CRT-style filtering to the VIC-II video output"
+            description = "Applies CRT-style filtering to the VIC-II video output",
+            valueLabels = mapOf(
+                "disabled" to "Off", "enabled_noblur" to "On (no blur)",
+                "enabled_lowblur" to "On (low blur)", "enabled_medblur" to "On (medium blur)",
+                "enabled" to "On (full blur)"
+            )
         ),
         CoreOptionDef(
             key = "vice_external_palette",
@@ -252,7 +270,12 @@ object ViceX64Manifest : CoreOptionManifest {
             displayName = "Audio Leak Emulation",
             values = listOf("disabled", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"),
             defaultValue = "disabled",
-            description = "Simulates audio signal leakage between channels"
+            description = "Simulates audio signal leakage between channels",
+            valueLabels = mapOf(
+                "disabled" to "Off", "1" to "1 (lowest)", "2" to "2", "3" to "3",
+                "4" to "4", "5" to "5", "6" to "6", "7" to "7", "8" to "8",
+                "9" to "9", "10" to "10 (highest)"
+            )
         ),
         CoreOptionDef(
             key = "vice_sid_engine",
@@ -273,28 +296,46 @@ object ViceX64Manifest : CoreOptionManifest {
             displayName = "SID Extra",
             values = listOf("disabled", "0xd420", "0xd500", "0xde00", "0xdf00"),
             defaultValue = "disabled",
-            description = "Enables a second SID chip at the specified address for stereo music"
+            description = "Enables a second SID chip at the specified address for stereo music",
+            valueLabels = mapOf(
+                "disabled" to "Off", "0xd420" to "\$D420", "0xd500" to "\$D500",
+                "0xde00" to "\$DE00", "0xdf00" to "\$DF00"
+            )
         ),
         CoreOptionDef(
             key = "vice_resid_sampling",
             displayName = "ReSID Sampling",
             values = listOf("fast", "interpolation", "fast resampling", "resampling"),
             defaultValue = "resampling",
-            description = "Selects the ReSID resampling method for audio quality vs performance"
+            description = "Selects the ReSID resampling method for audio quality vs performance",
+            valueLabels = mapOf(
+                "fast" to "Fast", "interpolation" to "Interpolation",
+                "fast resampling" to "Fast Resampling", "resampling" to "Resampling"
+            )
         ),
         CoreOptionDef(
             key = "vice_resid_passband",
             displayName = "ReSID Filter Passband",
             values = listOf("0", "10", "20", "30", "40", "50", "60", "70", "80", "90"),
             defaultValue = "90",
-            description = "Adjusts the ReSID resampling filter passband percentage"
+            description = "Adjusts the ReSID resampling filter passband percentage",
+            valueLabels = mapOf(
+                "0" to "0%", "10" to "10%", "20" to "20%", "30" to "30%",
+                "40" to "40%", "50" to "50%", "60" to "60%", "70" to "70%",
+                "80" to "80%", "90" to "90%"
+            )
         ),
         CoreOptionDef(
             key = "vice_resid_gain",
             displayName = "ReSID Filter Gain",
             values = listOf("90", "91", "92", "93", "94", "95", "96", "97", "98", "99", "100"),
             defaultValue = "97",
-            description = "Adjusts the ReSID filter output gain percentage"
+            description = "Adjusts the ReSID filter output gain percentage",
+            valueLabels = mapOf(
+                "90" to "90%", "91" to "91%", "92" to "92%", "93" to "93%",
+                "94" to "94%", "95" to "95%", "96" to "96%", "97" to "97%",
+                "98" to "98%", "99" to "99%", "100" to "100%"
+            )
         ),
         CoreOptionDef(
             key = "vice_resid_filterbias",
@@ -323,13 +364,18 @@ object ViceX64Manifest : CoreOptionManifest {
             displayName = "SFX Sound Expander",
             values = listOf("disabled", "3526", "3812"),
             defaultValue = "disabled",
-            description = "Enables the SFX Sound Expander FM synthesis add-on"
+            description = "Enables the SFX Sound Expander FM synthesis add-on",
+            valueLabels = mapOf("disabled" to "Off", "3526" to "YM3526 (OPL)", "3812" to "YM3812 (OPL2)")
         ),
         CoreOptionDef(
             key = "vice_sound_sample_rate",
             displayName = "Sample Rate",
             values = listOf("22050", "44100", "48000", "96000"),
-            defaultValue = "48000"
+            defaultValue = "48000",
+            valueLabels = mapOf(
+                "22050" to "22 kHz", "44100" to "44.1 kHz",
+                "48000" to "48 kHz", "96000" to "96 kHz"
+            )
         ),
         CoreOptionDef(
             key = "vice_analogmouse",
@@ -342,7 +388,12 @@ object ViceX64Manifest : CoreOptionManifest {
             key = "vice_analogmouse_deadzone",
             displayName = "Analog Stick Mouse Deadzone",
             values = listOf("0", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50"),
-            defaultValue = "20"
+            defaultValue = "20",
+            valueLabels = mapOf(
+                "0" to "0%", "5" to "5%", "10" to "10%", "15" to "15%",
+                "20" to "20%", "25" to "25%", "30" to "30%", "35" to "35%",
+                "40" to "40%", "45" to "45%", "50" to "50%"
+            )
         ),
         CoreOptionDef(
             key = "vice_analogmouse_speed",
@@ -384,7 +435,17 @@ object ViceX64Manifest : CoreOptionManifest {
                 "200", "210", "220", "230", "240", "250", "260", "270", "280",
                 "290", "300"
             ),
-            defaultValue = "100"
+            defaultValue = "100",
+            valueLabels = mapOf(
+                "10" to "10%", "20" to "20%", "30" to "30%", "40" to "40%",
+                "50" to "50%", "60" to "60%", "70" to "70%", "80" to "80%",
+                "90" to "90%", "100" to "100%", "110" to "110%", "120" to "120%",
+                "130" to "130%", "140" to "140%", "150" to "150%", "160" to "160%",
+                "170" to "170%", "180" to "180%", "190" to "190%", "200" to "200%",
+                "210" to "210%", "220" to "220%", "230" to "230%", "240" to "240%",
+                "250" to "250%", "260" to "260%", "270" to "270%", "280" to "280%",
+                "290" to "290%", "300" to "300%"
+            )
         ),
         CoreOptionDef(
             key = "vice_physical_keyboard_pass_through",
@@ -433,7 +494,11 @@ object ViceX64Manifest : CoreOptionManifest {
             displayName = "Turbo Pulse",
             values = listOf("2", "4", "6", "8", "10", "12"),
             defaultValue = "6",
-            description = "Sets the number of frames between each turbo fire press"
+            description = "Sets the number of frames between each turbo fire press",
+            valueLabels = mapOf(
+                "2" to "2 frames", "4" to "4 frames", "6" to "6 frames",
+                "8" to "8 frames", "10" to "10 frames", "12" to "12 frames"
+            )
         ),
         CoreOptionDef(
             key = "vice_userport_joytype",
@@ -447,14 +512,19 @@ object ViceX64Manifest : CoreOptionManifest {
             displayName = "Joystick Port",
             values = listOf("1", "2"),
             defaultValue = "2",
-            description = "Selects which controller port the primary joystick is plugged into"
+            description = "Selects which controller port the primary joystick is plugged into",
+            valueLabels = mapOf("1" to "Port 1", "2" to "Port 2")
         ),
         CoreOptionDef(
             key = "vice_retropad_options",
             displayName = "RetroPad Face Button Options",
             values = listOf("disabled", "jump", "rotate", "rotate_jump"),
             defaultValue = "disabled",
-            description = "Remaps face buttons for common joystick control schemes"
+            description = "Remaps face buttons for common joystick control schemes",
+            valueLabels = mapOf(
+                "disabled" to "Off", "jump" to "Jump", "rotate" to "Rotate",
+                "rotate_jump" to "Rotate + Jump"
+            )
         ),
         CoreOptionDef(
             key = "vice_mapping_options_display",

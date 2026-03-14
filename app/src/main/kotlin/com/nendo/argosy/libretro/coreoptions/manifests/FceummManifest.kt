@@ -64,7 +64,12 @@ object FceummManifest : CoreOptionManifest {
             key = "fceumm_sndvolume",
             displayName = "Sound Volume",
             values = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"),
-            defaultValue = "7"
+            defaultValue = "7",
+            valueLabels = mapOf(
+                "0" to "Mute", "1" to "10%", "2" to "20%", "3" to "30%",
+                "4" to "40%", "5" to "50%", "6" to "60%", "7" to "70%",
+                "8" to "80%", "9" to "90%", "10" to "100%"
+            )
         ),
         CoreOptionDef(
             key = "fceumm_sndquality",
@@ -120,7 +125,8 @@ object FceummManifest : CoreOptionManifest {
             displayName = "RAM Power Up State",
             values = listOf("FF", "00", "random"),
             defaultValue = "FF",
-            description = "Sets the initial value of RAM on startup, which some games depend on"
+            description = "Sets the initial value of RAM on startup, which some games depend on",
+            valueLabels = mapOf("FF" to "All 1s (0xFF)", "00" to "All 0s (0x00)", "random" to "Random")
         ),
         CoreOptionDef(
             key = "fceumm_ntsc_filter",

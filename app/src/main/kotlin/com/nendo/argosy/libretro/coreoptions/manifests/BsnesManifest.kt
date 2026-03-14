@@ -17,7 +17,10 @@ object BsnesManifest : CoreOptionManifest {
             displayName = "Crop Vertical Overscan",
             values = listOf("0", "8", "12", "16"),
             defaultValue = "8",
-            description = "Removes empty border lines at the top and bottom of the screen"
+            description = "Removes empty border lines at the top and bottom of the screen",
+            valueLabels = mapOf(
+                "0" to "None", "8" to "8 pixels", "12" to "12 pixels", "16" to "16 pixels"
+            )
         ),
         CoreOptionDef(
             key = "bsnes_blur_emulation",
@@ -143,7 +146,11 @@ object BsnesManifest : CoreOptionManifest {
             displayName = "Internal Run-Ahead",
             values = listOf("OFF", "1", "2", "3", "4"),
             defaultValue = "OFF",
-            description = "Reduces input latency by running frames ahead and discarding them"
+            description = "Reduces input latency by running frames ahead and discarding them",
+            valueLabels = mapOf(
+                "OFF" to "Off", "1" to "1 frame", "2" to "2 frames",
+                "3" to "3 frames", "4" to "4 frames"
+            )
         ),
         CoreOptionDef(
             key = "bsnes_coprocessor_delayed_sync",
@@ -229,7 +236,8 @@ object BsnesManifest : CoreOptionManifest {
             displayName = "Preferred Super Game Boy BIOS",
             values = listOf("SGB1.sfc", "SGB2.sfc"),
             defaultValue = "SGB1.sfc",
-            description = "Selects which Super Game Boy BIOS version to use"
+            description = "Selects which Super Game Boy BIOS version to use",
+            valueLabels = mapOf("SGB1.sfc" to "Super Game Boy", "SGB2.sfc" to "Super Game Boy 2")
         ),
         CoreOptionDef(
             key = "bsnes_hide_sgb_border",

@@ -40,7 +40,8 @@ object MednafenWswanManifest : CoreOptionManifest {
             displayName = "Color Depth (Restart Required)",
             values = listOf("16bit", "24bit"),
             defaultValue = "16bit",
-            description = "Sets the color depth used for rendering"
+            description = "Sets the color depth used for rendering",
+            valueLabels = mapOf("16bit" to "16-bit", "24bit" to "24-bit")
         ),
         CoreOptionDef(
             key = "wswan_frameskip",
@@ -54,7 +55,13 @@ object MednafenWswanManifest : CoreOptionManifest {
             displayName = "Frameskip Threshold (%)",
             values = listOf("15", "18", "21", "24", "27", "30", "33", "36", "39", "42", "45", "48", "51", "54", "57", "60"),
             defaultValue = "33",
-            description = "Sets the audio buffer occupancy below which frames are skipped"
+            description = "Sets the audio buffer occupancy below which frames are skipped",
+            valueLabels = mapOf(
+                "15" to "15%", "18" to "18%", "21" to "21%", "24" to "24%",
+                "27" to "27%", "30" to "30%", "33" to "33%", "36" to "36%",
+                "39" to "39%", "42" to "42%", "45" to "45%", "48" to "48%",
+                "51" to "51%", "54" to "54%", "57" to "57%", "60" to "60%"
+            )
         ),
         CoreOptionDef(
             key = "wswan_60hz_mode",
@@ -68,7 +75,10 @@ object MednafenWswanManifest : CoreOptionManifest {
             displayName = "Sound Output Sample Rate",
             values = listOf("11025", "22050", "44100", "48000"),
             defaultValue = "44100",
-            description = "Sets the audio output sample rate in Hz"
+            description = "Sets the audio output sample rate in Hz",
+            valueLabels = mapOf(
+                "11025" to "11 kHz", "22050" to "22 kHz", "44100" to "44.1 kHz", "48000" to "48 kHz"
+            )
         ),
         CoreOptionDef(
             key = "wswan_sound_low_pass",

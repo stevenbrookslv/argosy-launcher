@@ -18,7 +18,8 @@ object ParallelN64Manifest : CoreOptionManifest {
             displayName = "Audio Buffer Size",
             values = listOf("2048", "1024"),
             defaultValue = "2048",
-            description = "Sets the audio buffer size; smaller values reduce latency but may crackle"
+            description = "Sets the audio buffer size; smaller values reduce latency but may crackle",
+            valueLabels = mapOf("2048" to "2048 samples", "1024" to "1024 samples")
         ),
         CoreOptionDef(
             key = "parallel-n64-astick-deadzone",
@@ -95,7 +96,8 @@ object ParallelN64Manifest : CoreOptionManifest {
             displayName = "GFX Accuracy",
             values = listOf("low", "medium", "high", "veryhigh"),
             defaultValue = "veryhigh",
-            description = "Sets the rendering accuracy level trading quality for performance"
+            description = "Sets the rendering accuracy level trading quality for performance",
+            valueLabels = mapOf("veryhigh" to "Very High")
         ),
         CoreOptionDef(
             key = "parallel-n64-gfxplugin",
@@ -287,7 +289,8 @@ object ParallelN64Manifest : CoreOptionManifest {
             displayName = "VI Refresh (Overclock)",
             values = listOf("auto", "1500", "2200"),
             defaultValue = "auto",
-            description = "Overclocks the video refresh rate to reduce lag in some games"
+            description = "Overclocks the video refresh rate to reduce lag in some games",
+            valueLabels = mapOf("1500" to "1500 VI/s", "2200" to "2200 VI/s")
         ),
         CoreOptionDef(
             key = "parallel-n64-bufferswap",

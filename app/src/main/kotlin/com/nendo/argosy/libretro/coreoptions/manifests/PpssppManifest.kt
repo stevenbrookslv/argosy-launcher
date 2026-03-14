@@ -82,14 +82,21 @@ object PpssppManifest : CoreOptionManifest {
             displayName = "Texture Scaling Level",
             values = listOf("0", "1", "2", "3", "4", "5"),
             defaultValue = "1",
-            description = "Upscales textures using the selected algorithm for sharper visuals"
+            description = "Upscales textures using the selected algorithm for sharper visuals",
+            valueLabels = mapOf(
+                "0" to "Off", "1" to "1x", "2" to "2x", "3" to "3x", "4" to "4x", "5" to "5x"
+            )
         ),
         CoreOptionDef(
             key = "ppsspp_texture_scaling_type",
             displayName = "Texture Scaling Type",
             values = listOf("xbrz", "hybrid", "bicubic", "hybrid_bicubic"),
             defaultValue = "xbrz",
-            description = "Selects the algorithm used for texture upscaling"
+            description = "Selects the algorithm used for texture upscaling",
+            valueLabels = mapOf(
+                "xbrz" to "xBRZ", "hybrid" to "Hybrid", "bicubic" to "Bicubic",
+                "hybrid_bicubic" to "Hybrid + Bicubic"
+            )
         ),
         CoreOptionDef(
             key = "ppsspp_texture_filtering",
@@ -146,7 +153,8 @@ object PpssppManifest : CoreOptionManifest {
             displayName = "Frameskip",
             values = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"),
             defaultValue = "0",
-            description = "Sets how many frames to skip between each rendered frame"
+            description = "Sets how many frames to skip between each rendered frame",
+            valueLabels = mapOf("0" to "Off")
         ),
         CoreOptionDef(
             key = "ppsspp_force_max_fps",

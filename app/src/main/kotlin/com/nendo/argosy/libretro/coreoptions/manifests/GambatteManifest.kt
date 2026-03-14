@@ -453,14 +453,19 @@ object GambatteManifest : CoreOptionManifest {
             displayName = "Mix Frames",
             values = listOf("disabled", "mix", "lcd_ghosting", "lcd_ghosting_fast"),
             defaultValue = "disabled",
-            description = "Blend consecutive frames to simulate LCD ghosting or transparency effects"
+            description = "Blend consecutive frames to simulate LCD ghosting or transparency effects",
+            valueLabels = mapOf(
+                "disabled" to "Disabled", "mix" to "Mix",
+                "lcd_ghosting" to "LCD Ghosting", "lcd_ghosting_fast" to "LCD Ghosting (Fast)"
+            )
         ),
         CoreOptionDef(
             key = "gambatte_audio_resampler",
             displayName = "Audio Resampler",
             values = listOf("sinc", "cc"),
             defaultValue = "sinc",
-            description = "Select the algorithm used to resample audio output"
+            description = "Select the algorithm used to resample audio output",
+            valueLabels = mapOf("sinc" to "Sinc", "cc" to "Cosine (CC)")
         ),
         CoreOptionDef(
             key = "gambatte_gb_hwmode",
@@ -494,7 +499,12 @@ object GambatteManifest : CoreOptionManifest {
             key = "gambatte_rumble_level",
             displayName = "Rumble Level",
             values = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"),
-            defaultValue = "10"
+            defaultValue = "10",
+            valueLabels = mapOf(
+                "0" to "Off", "1" to "10%", "2" to "20%", "3" to "30%",
+                "4" to "40%", "5" to "50%", "6" to "60%", "7" to "70%",
+                "8" to "80%", "9" to "90%", "10" to "100%"
+            )
         ),
         CoreOptionDef(
             key = "gambatte_show_gb_link_settings",

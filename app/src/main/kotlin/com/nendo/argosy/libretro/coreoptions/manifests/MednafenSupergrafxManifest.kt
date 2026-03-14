@@ -165,7 +165,8 @@ object MednafenSupergrafxManifest : CoreOptionManifest {
             displayName = "CD Speed",
             values = listOf("1", "2", "4", "8"),
             defaultValue = "1",
-            description = "Sets the CD-ROM read speed multiplier for faster loading"
+            description = "Sets the CD-ROM read speed multiplier for faster loading",
+            valueLabels = mapOf("1" to "1x (native)", "2" to "2x", "4" to "4x", "8" to "8x")
         ),
         CoreOptionDef(
             key = "sgx_adpcmvolume",
@@ -174,7 +175,15 @@ object MednafenSupergrafxManifest : CoreOptionManifest {
                 "0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100",
                 "110", "120", "130", "140", "150", "160", "170", "180", "190", "200"
             ),
-            defaultValue = "100"
+            defaultValue = "100",
+            valueLabels = mapOf(
+                "0" to "0%", "10" to "10%", "20" to "20%", "30" to "30%",
+                "40" to "40%", "50" to "50%", "60" to "60%", "70" to "70%",
+                "80" to "80%", "90" to "90%", "100" to "100%",
+                "110" to "110%", "120" to "120%", "130" to "130%",
+                "140" to "140%", "150" to "150%", "160" to "160%",
+                "170" to "170%", "180" to "180%", "190" to "190%", "200" to "200%"
+            )
         ),
         CoreOptionDef(
             key = "sgx_cddavolume",
@@ -183,7 +192,15 @@ object MednafenSupergrafxManifest : CoreOptionManifest {
                 "0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100",
                 "110", "120", "130", "140", "150", "160", "170", "180", "190", "200"
             ),
-            defaultValue = "100"
+            defaultValue = "100",
+            valueLabels = mapOf(
+                "0" to "0%", "10" to "10%", "20" to "20%", "30" to "30%",
+                "40" to "40%", "50" to "50%", "60" to "60%", "70" to "70%",
+                "80" to "80%", "90" to "90%", "100" to "100%",
+                "110" to "110%", "120" to "120%", "130" to "130%",
+                "140" to "140%", "150" to "150%", "160" to "160%",
+                "170" to "170%", "180" to "180%", "190" to "190%", "200" to "200%"
+            )
         ),
         CoreOptionDef(
             key = "sgx_cdpsgvolume",
@@ -192,7 +209,15 @@ object MednafenSupergrafxManifest : CoreOptionManifest {
                 "0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100",
                 "110", "120", "130", "140", "150", "160", "170", "180", "190", "200"
             ),
-            defaultValue = "100"
+            defaultValue = "100",
+            valueLabels = mapOf(
+                "0" to "0%", "10" to "10%", "20" to "20%", "30" to "30%",
+                "40" to "40%", "50" to "50%", "60" to "60%", "70" to "70%",
+                "80" to "80%", "90" to "90%", "100" to "100%",
+                "110" to "110%", "120" to "120%", "130" to "130%",
+                "140" to "140%", "150" to "150%", "160" to "160%",
+                "170" to "170%", "180" to "180%", "190" to "190%", "200" to "200%"
+            )
         ),
         CoreOptionDef(
             key = "sgx_forcesgx",
@@ -216,7 +241,12 @@ object MednafenSupergrafxManifest : CoreOptionManifest {
                 "20", "30", "40", "50"
             ),
             defaultValue = "1",
-            description = "Multiplies the emulated CPU speed to reduce slowdown in games"
+            description = "Multiplies the emulated CPU speed to reduce slowdown in games",
+            valueLabels = mapOf(
+                "1" to "1x (native)", "2" to "2x", "3" to "3x", "4" to "4x",
+                "5" to "5x", "6" to "6x", "7" to "7x", "8" to "8x", "9" to "9x",
+                "10" to "10x", "20" to "20x", "30" to "30x", "40" to "40x", "50" to "50x"
+            )
         ),
     )
 }

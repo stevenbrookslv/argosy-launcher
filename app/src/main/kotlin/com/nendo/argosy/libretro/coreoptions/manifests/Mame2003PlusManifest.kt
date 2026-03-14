@@ -61,7 +61,14 @@ object Mame2003PlusManifest : CoreOptionManifest {
                 "1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7",
                 "1.8", "1.9", "2.0"
             ),
-            defaultValue = "1.0"
+            defaultValue = "1.0",
+            valueLabels = mapOf(
+                "0.2" to "20%", "0.3" to "30%", "0.4" to "40%", "0.5" to "50%",
+                "0.6" to "60%", "0.7" to "70%", "0.8" to "80%", "0.9" to "90%",
+                "1.0" to "100%", "1.1" to "110%", "1.2" to "120%", "1.3" to "130%",
+                "1.4" to "140%", "1.5" to "150%", "1.6" to "160%", "1.7" to "170%",
+                "1.8" to "180%", "1.9" to "190%", "2.0" to "200%"
+            )
         ),
         CoreOptionDef(
             key = "mame2003-plus_gamma",
@@ -71,7 +78,14 @@ object Mame2003PlusManifest : CoreOptionManifest {
                 "1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7",
                 "1.8", "1.9", "2.0"
             ),
-            defaultValue = "1.0"
+            defaultValue = "1.0",
+            valueLabels = mapOf(
+                "0.5" to "0.5 (darker)", "0.6" to "0.6", "0.7" to "0.7",
+                "0.8" to "0.8", "0.9" to "0.9", "1.0" to "1.0 (default)",
+                "1.1" to "1.1", "1.2" to "1.2", "1.3" to "1.3",
+                "1.4" to "1.4", "1.5" to "1.5", "1.6" to "1.6",
+                "1.7" to "1.7", "1.8" to "1.8", "1.9" to "1.9", "2.0" to "2.0 (lighter)"
+            )
         ),
         CoreOptionDef(
             key = "mame2003-plus_display_artwork",
@@ -85,7 +99,11 @@ object Mame2003PlusManifest : CoreOptionManifest {
             displayName = "Artwork Resolution Multiplier",
             values = listOf("1", "2", "3", "4", "5", "6", "7", "8"),
             defaultValue = "1",
-            description = "Increases the rendering resolution of artwork overlays"
+            description = "Increases the rendering resolution of artwork overlays",
+            valueLabels = mapOf(
+                "1" to "1x", "2" to "2x", "3" to "3x", "4" to "4x",
+                "5" to "5x", "6" to "6x", "7" to "7x", "8" to "8x"
+            )
         ),
         CoreOptionDef(
             key = "mame2003-plus_art_overlay_opacity",
@@ -107,14 +125,28 @@ object Mame2003PlusManifest : CoreOptionManifest {
                 "unibios13", "unibios11", "unibios10", "debug", "asia-aes"
             ),
             defaultValue = "default",
-            description = "Selects which Neo Geo BIOS to use for region and feature control"
+            description = "Selects which Neo Geo BIOS to use for region and feature control",
+            valueLabels = mapOf(
+                "default" to "Default", "euro" to "Europe MVS", "euro-s1" to "Europe MVS (S1)",
+                "us" to "USA MVS", "us-e" to "USA MVS (E)", "asia" to "Asia MVS",
+                "japan" to "Japan MVS", "japan-s2" to "Japan MVS (S2)",
+                "unibios40" to "UniBIOS 4.0", "unibios33" to "UniBIOS 3.3",
+                "unibios20" to "UniBIOS 2.0", "unibios13" to "UniBIOS 1.3",
+                "unibios11" to "UniBIOS 1.1", "unibios10" to "UniBIOS 1.0",
+                "debug" to "Debug", "asia-aes" to "Asia AES"
+            )
         ),
         CoreOptionDef(
             key = "mame2003-plus_stv_bios",
             displayName = "Specify Sega ST-V BIOS",
             values = listOf("default", "japan", "japana", "us", "japan_b", "taiwan", "europe"),
             defaultValue = "default",
-            description = "Selects which Sega ST-V arcade BIOS to use"
+            description = "Selects which Sega ST-V arcade BIOS to use",
+            valueLabels = mapOf(
+                "default" to "Default", "japan" to "Japan", "japana" to "Japan (Alt)",
+                "us" to "USA", "japan_b" to "Japan (B)", "taiwan" to "Taiwan",
+                "europe" to "Europe"
+            )
         ),
         CoreOptionDef(
             key = "mame2003-plus_use_samples",
@@ -190,14 +222,23 @@ object Mame2003PlusManifest : CoreOptionManifest {
             displayName = "Vector Flicker",
             values = listOf("0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"),
             defaultValue = "20",
-            description = "Simulates the flicker of a real vector CRT display"
+            description = "Simulates the flicker of a real vector CRT display",
+            valueLabels = mapOf(
+                "0" to "Off", "10" to "10%", "20" to "20%", "30" to "30%",
+                "40" to "40%", "50" to "50%", "60" to "60%", "70" to "70%",
+                "80" to "80%", "90" to "90%", "100" to "100%"
+            )
         ),
         CoreOptionDef(
             key = "mame2003-plus_vector_intensity",
             displayName = "Vector Intensity",
             values = listOf("0.5", "1", "1.5", "2", "2.5", "3"),
             defaultValue = "1.5",
-            description = "Controls the brightness of vector lines"
+            description = "Controls the brightness of vector lines",
+            valueLabels = mapOf(
+                "0.5" to "0.5x", "1" to "1.0x", "1.5" to "1.5x",
+                "2" to "2.0x", "2.5" to "2.5x", "3" to "3.0x"
+            )
         ),
         CoreOptionDef(
             key = "mame2003-plus_nvram_bootstraps",
@@ -210,14 +251,22 @@ object Mame2003PlusManifest : CoreOptionManifest {
             key = "mame2003-plus_sample_rate",
             displayName = "Sample Rate",
             values = listOf("8000", "11025", "22050", "30000", "44100", "48000"),
-            defaultValue = "48000"
+            defaultValue = "48000",
+            valueLabels = mapOf(
+                "8000" to "8 kHz", "11025" to "11 kHz", "22050" to "22 kHz",
+                "30000" to "30 kHz", "44100" to "44.1 kHz", "48000" to "48 kHz"
+            )
         ),
         CoreOptionDef(
             key = "mame2003-plus_input_interface",
             displayName = "Input Interface",
             values = listOf("simultaneous", "retropad", "keyboard"),
             defaultValue = "simultaneous",
-            description = "Selects which input devices the core accepts"
+            description = "Selects which input devices the core accepts",
+            valueLabels = mapOf(
+                "simultaneous" to "Gamepad + Keyboard", "retropad" to "Gamepad Only",
+                "keyboard" to "Keyboard Only"
+            )
         ),
         CoreOptionDef(
             key = "mame2003-plus_mame_remapping",
@@ -280,7 +329,15 @@ object Mame2003PlusManifest : CoreOptionManifest {
                 "115", "120", "125", "200", "250", "300"
             ),
             defaultValue = "default",
-            description = "Scales the emulated CPU clock speed to adjust game difficulty or speed"
+            description = "Scales the emulated CPU clock speed to adjust game difficulty or speed",
+            valueLabels = mapOf(
+                "default" to "Default (100%)", "25" to "25%", "30" to "30%", "35" to "35%",
+                "40" to "40%", "45" to "45%", "50" to "50%", "55" to "55%", "60" to "60%",
+                "65" to "65%", "70" to "70%", "75" to "75%", "80" to "80%", "85" to "85%",
+                "90" to "90%", "95" to "95%", "105" to "105%", "110" to "110%",
+                "115" to "115%", "120" to "120%", "125" to "125%", "200" to "200%",
+                "250" to "250%", "300" to "300%"
+            )
         ),
         CoreOptionDef(
             key = "mame2003-plus_override_ad_stick",

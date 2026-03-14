@@ -42,7 +42,8 @@ object FbneoManifest : CoreOptionManifest {
             displayName = "Samplerate",
             values = listOf("44100", "48000"),
             defaultValue = "48000",
-            description = "Sets the audio output sample rate in Hz"
+            description = "Sets the audio output sample rate in Hz",
+            valueLabels = mapOf("44100" to "44.1 kHz", "48000" to "48 kHz")
         ),
         CoreOptionDef(
             key = "fbneo-sample-interpolation",
@@ -122,14 +123,24 @@ object FbneoManifest : CoreOptionManifest {
                 "36", "39", "42", "45", "48", "51", "54", "57", "60"
             ),
             defaultValue = "33",
-            description = "Sets the audio buffer occupancy below which frames will be skipped"
+            description = "Sets the audio buffer occupancy below which frames will be skipped",
+            valueLabels = mapOf(
+                "15" to "15%", "18" to "18%", "21" to "21%", "24" to "24%",
+                "27" to "27%", "30" to "30%", "33" to "33%", "36" to "36%",
+                "39" to "39%", "42" to "42%", "45" to "45%", "48" to "48%",
+                "51" to "51%", "54" to "54%", "57" to "57%", "60" to "60%"
+            )
         ),
         CoreOptionDef(
             key = "fbneo-fixed-frameskip",
             displayName = "Fixed Frameskip",
             values = listOf("0", "1", "2", "3", "4", "5"),
             defaultValue = "0",
-            description = "Sets how many frames to skip between each rendered frame"
+            description = "Sets how many frames to skip between each rendered frame",
+            valueLabels = mapOf(
+                "0" to "Off", "1" to "1 frame", "2" to "2 frames",
+                "3" to "3 frames", "4" to "4 frames", "5" to "5 frames"
+            )
         ),
         CoreOptionDef(
             key = "fbneo-neogeo-mode",
@@ -139,7 +150,13 @@ object FbneoManifest : CoreOptionManifest {
                 "AES_EUR", "AES_JAP", "UNIBIOS"
             ),
             defaultValue = "DIPSWITCH",
-            description = "Selects the Neo-Geo system BIOS and region to emulate"
+            description = "Selects the Neo-Geo system BIOS and region to emulate",
+            valueLabels = mapOf(
+                "DIPSWITCH" to "Use DIP Switches", "MVS_EUR" to "MVS Europe",
+                "MVS_USA" to "MVS USA", "MVS_JAP" to "MVS Japan",
+                "AES_EUR" to "AES Europe", "AES_JAP" to "AES Japan",
+                "UNIBIOS" to "UniBIOS"
+            )
         ),
         CoreOptionDef(
             key = "fbneo-memcard-mode",

@@ -12,7 +12,11 @@ object MednafenPsxHwManifest : CoreOptionManifest {
             displayName = "Renderer (Restart)",
             values = listOf("hardware", "hardware_gl", "hardware_vk", "software"),
             defaultValue = "hardware",
-            description = "Selects the rendering backend used for graphics output"
+            description = "Selects the rendering backend used for graphics output",
+            valueLabels = mapOf(
+                "hardware" to "Hardware (Auto)", "hardware_gl" to "Hardware (OpenGL)",
+                "hardware_vk" to "Hardware (Vulkan)", "software" to "Software"
+            )
         ),
         CoreOptionDef(
             key = "beetle_psx_hw_renderer_software_fb",
@@ -162,14 +166,19 @@ object MednafenPsxHwManifest : CoreOptionManifest {
             displayName = "CPU Dynarec",
             values = listOf("disabled", "execute", "execute_once", "run_interpreter"),
             defaultValue = "disabled",
-            description = "Selects the dynamic recompiler mode for CPU emulation"
+            description = "Selects the dynamic recompiler mode for CPU emulation",
+            valueLabels = mapOf(
+                "execute" to "Max Performance", "execute_once" to "One-Shot",
+                "run_interpreter" to "Interpreter Fallback"
+            )
         ),
         CoreOptionDef(
             key = "beetle_psx_hw_dynarec_invalidate",
             displayName = "Dynarec Code Invalidation",
             values = listOf("full", "dma"),
             defaultValue = "full",
-            description = "Controls when the dynarec invalidates compiled code blocks"
+            description = "Controls when the dynarec invalidates compiled code blocks",
+            valueLabels = mapOf("full" to "Full (Safer)", "dma" to "DMA Only (Faster)")
         ),
         CoreOptionDef(
             key = "beetle_psx_hw_dynarec_eventcycles",
@@ -220,7 +229,11 @@ object MednafenPsxHwManifest : CoreOptionManifest {
             displayName = "Core-Reported FPS Timing",
             values = listOf("force_progressive", "force_interlaced", "auto_toggle"),
             defaultValue = "force_progressive",
-            description = "Controls how the core reports frame timing to the frontend"
+            description = "Controls how the core reports frame timing to the frontend",
+            valueLabels = mapOf(
+                "force_progressive" to "Force Progressive", "force_interlaced" to "Force Interlaced",
+                "auto_toggle" to "Auto Toggle"
+            )
         ),
         CoreOptionDef(
             key = "beetle_psx_hw_aspect_ratio",
@@ -307,7 +320,8 @@ object MednafenPsxHwManifest : CoreOptionManifest {
             displayName = "CD Access Method (Restart)",
             values = listOf("sync", "async", "precache"),
             defaultValue = "sync",
-            description = "Selects how the CD image is accessed during gameplay"
+            description = "Selects how the CD image is accessed during gameplay",
+            valueLabels = mapOf("sync" to "Synchronous", "async" to "Asynchronous", "precache" to "Pre-cache")
         ),
         CoreOptionDef(
             key = "beetle_psx_hw_cd_fastload",
