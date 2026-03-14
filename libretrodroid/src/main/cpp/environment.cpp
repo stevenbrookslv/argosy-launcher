@@ -90,7 +90,7 @@ void Environment::updateVariable(const std::string& key, const std::string& valu
 bool Environment::environment_handle_set_variables(const struct retro_variable* received) {
     unsigned count = 0;
     while (received[count].key != nullptr) {
-        LOGD("Core registered variable: %s = %s", received[count].key, received[count].value);
+        LOGI("Core registered variable: %s", received[count].key);
 
         std::string key(received[count].key);
         std::string description(received[count].value);
@@ -126,7 +126,6 @@ bool Environment::environment_handle_get_variable(struct retro_variable* request
     }
 
     requested->value = foundVariable->second.value.c_str();
-    LOGD("Variable GET hit: %s = %s", requested->key, requested->value);
     return true;
 }
 

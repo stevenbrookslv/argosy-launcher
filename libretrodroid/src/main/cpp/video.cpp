@@ -16,6 +16,7 @@
  */
 
 #include <GLES2/gl2.h>
+#include <GLES3/gl3.h>
 #include <EGL/egl.h>
 #include <cstdlib>
 #include <string>
@@ -197,16 +198,7 @@ void Video::renderFrame() {
     isDirty = false;
     frameCount++;
 
-    LOGI("renderFrame: tex=%lu shaders=%zu screenW=%u screenH=%u",
-         (unsigned long)renderer->getTexture(), shadersChain.size(),
-         videoLayout.getScreenWidth(), videoLayout.getScreenHeight());
-
     glDisable(GL_DEPTH_TEST);
-    glDisable(GL_SCISSOR_TEST);
-    glDisable(GL_BLEND);
-    glDisable(GL_CULL_FACE);
-    glDisable(GL_STENCIL_TEST);
-    glDisable(GL_DITHER);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glClearColor(0.0F, 0.0F, 0.0F, 1.0F);
@@ -373,8 +365,8 @@ void Video::onNewFrame(const void *data, unsigned width, unsigned height, size_t
         renderer->lastFrameSize = { (int)width, (int)height };
         videoLayout.updateContentSize(width, height);
         isDirty = true;
-        LOGI("HW frame: %ux%u fbo=%lu tex=%lu", width, height,
-             (unsigned long)renderer->getFramebuffer(), (unsigned long)renderer->getTexture());
+
+        // directFBRendering: capture happens in captureAndRenderDirectFB after retro_run
     }
 }
 
@@ -465,10 +457,109 @@ void Video::renderBlackFrame() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
+void Video::ensureScratchFBO(int w, int h) {
+    if (scratchW == w && scratchH == h) return;
+
+    if (scratchFBO) {
+        glDeleteFramebuffers(1, &scratchFBO);
+        glDeleteTextures(1, &scratchTex);
+    }
+    glGenFramebuffers(1, &scratchFBO);
+    glGenTextures(1, &scratchTex);
+    glBindTexture(GL_TEXTURE_2D, scratchTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindFramebuffer(GL_FRAMEBUFFER, scratchFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, scratchTex, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    scratchW = w;
+    scratchH = h;
+}
+
+void Video::restoreDirectFBPreviousFrame() {
+    if (scratchW <= 0 || scratchH <= 0) return;
+
+    glDisable(GL_SCISSOR_TEST);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, scratchFBO);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBlitFramebuffer(0, 0, scratchW, scratchH, 0, 0, scratchW, scratchH,
+                      GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Video::captureAndRenderDirectFB() {
+    int w = renderer->lastFrameSize.first;
+    int h = renderer->lastFrameSize.second;
+    if (w <= 0 || h <= 0) return;
+
+    unsigned screenW = videoLayout.getScreenWidth();
+    unsigned screenH = videoLayout.getScreenHeight();
+    if (screenW == 0 || screenH == 0) return;
+
+    ensureScratchFBO(w, h);
+
+    // Reset GL state the core may have left active (Dolphin leaves scissor enabled)
+    glDisable(GL_SCISSOR_TEST);
+
+    // Only capture from FBO 0 when the core produced a new frame.
+    // On duplicate frames, re-present the last good capture from scratch FBO.
+    if (isDirty) {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, scratchFBO);
+        glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        isDirty = false;
+    }
+
+    // Compute aspect-correct destination rect
+    float contentAspect = (float)w / (float)h;
+    float screenAspect = (float)screenW / (float)screenH;
+
+    int dstW, dstH, dstX, dstY;
+    if (contentAspect > screenAspect) {
+        dstW = (int)screenW;
+        dstH = (int)((float)screenW / contentAspect);
+    } else {
+        dstH = (int)screenH;
+        dstW = (int)((float)screenH * contentAspect);
+    }
+    dstX = ((int)screenW - dstW) / 2;
+    dstY = ((int)screenH - dstH) / 2;
+
+    // Clear only the letterbox bar regions
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glEnable(GL_SCISSOR_TEST);
+    if (dstX > 0) {
+        glScissor(0, 0, dstX, (int)screenH);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glScissor(dstX + dstW, 0, (int)screenW - dstX - dstW, (int)screenH);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+    if (dstY > 0) {
+        glScissor(0, 0, (int)screenW, dstY);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glScissor(0, dstY + dstH, (int)screenW, (int)screenH - dstY - dstH);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+    glDisable(GL_SCISSOR_TEST);
+
+    // Scale: always present from scratch FBO (persists the last good frame)
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, scratchFBO);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBlitFramebuffer(0, 0, w, h, dstX, dstY, dstX + dstW, dstY + dstH,
+                      GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    frameCount++;
+}
+
 void Video::initializeRenderer(RenderingOptions renderingOptions) {
     auto shaders = ShaderManager::getShader(requestedShaderConfig);
 
     if (renderingOptions.hardwareAccelerated) {
+        directFBRendering = true;
         renderer = new FramebufferRenderer(
             renderingOptions.width,
             renderingOptions.height,

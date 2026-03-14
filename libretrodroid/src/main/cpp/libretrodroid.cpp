@@ -211,6 +211,18 @@ void LibretroDroid::onSurfaceChanged(unsigned int width, unsigned int height) {
 void LibretroDroid::onSurfaceCreated() {
     LOGD("Performing libretrodroid onSurfaceCreated");
 
+    if (Environment::getInstance().isUseHwAcceleration()) {
+        EGLDisplay display = eglGetCurrentDisplay();
+        EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
+        if (display != EGL_NO_DISPLAY && surface != EGL_NO_SURFACE) {
+            if (eglSurfaceAttrib(display, surface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED)) {
+                LOGI("EGL_BUFFER_PRESERVED enabled for HW core");
+            } else {
+                LOGW("EGL_BUFFER_PRESERVED not supported");
+            }
+        }
+    }
+
     struct retro_system_av_info system_av_info {};
     core->retro_get_system_av_info(&system_av_info);
 
@@ -491,23 +503,9 @@ void LibretroDroid::step() {
         achievements.evaluateFrame();
     }
 
-    // Diagnostic: sample both FBO 1 and FBO 0
-    static int diagFrame = 0;
-    if (video && diagFrame < 300 && (diagFrame % 30) == 0) {
-        auto fbo = video->getCurrentFramebuffer();
-        uint8_t p1[4] = {0}, p0[4] = {0};
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        glReadPixels(320, 264, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, p1);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glReadPixels(320, 264, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, p0);
-        LOGI("DIAG frame=%d FBO%lu=[%d,%d,%d,%d] FBO0=[%d,%d,%d,%d]",
-             diagFrame, (unsigned long)fbo,
-             p1[0], p1[1], p1[2], p1[3],
-             p0[0], p0[1], p0[2], p0[3]);
-    }
-    diagFrame++;
-
-    if (video && !video->rendersInVideoCallback()) {
+    if (video && video->usesDirectFBRendering()) {
+        video->captureAndRenderDirectFB();
+    } else if (video && !video->rendersInVideoCallback()) {
         video->renderFrame();
     }
 

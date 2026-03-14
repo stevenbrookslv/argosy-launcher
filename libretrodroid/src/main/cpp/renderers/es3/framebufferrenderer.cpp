@@ -80,7 +80,7 @@ void FramebufferRenderer::updateRenderedResolution(unsigned int width, unsigned 
 }
 
 bool FramebufferRenderer::rendersInVideoCallback() {
-    return false;
+    return true;
 }
 
 void FramebufferRenderer::setShaders(ShaderManager::Chain shaders) {
