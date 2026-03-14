@@ -20,6 +20,7 @@
 
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#include <EGL/egl.h>
 #include <optional>
 #include <array>
 #include <vector>
@@ -90,25 +91,26 @@ public:
 
     void renderFrame();
     void renderBlackFrame();
-    void restoreDirectFBPreviousFrame();
-    void captureAndRenderDirectFB();
 
     void onNewFrame(const void *data, unsigned width, unsigned height, size_t pitch);
 
     std::vector<uint8_t> captureRawFrame(int& outWidth, int& outHeight);
 
     uintptr_t getCurrentFramebuffer() {
-        if (directFBRendering) return 0;
+        if (hwRenderFBO != 0) return hwRenderFBO;
         return renderer->getFramebuffer();
     };
 
     bool rendersInVideoCallback() {
-        return !directFBRendering && renderer->rendersInVideoCallback();
+        return !hwAccelerated && renderer->rendersInVideoCallback();
     }
 
-    bool usesDirectFBRendering() const {
-        return directFBRendering;
+    bool isHWAccelerated() const {
+        return hwAccelerated;
     }
+
+    void bindHWContext();
+    void bindMainContext();
 
 private:
     void updateProgram();
@@ -119,6 +121,8 @@ private:
     float getTextureHeight();
 
     void initializeRenderer(RenderingOptions renderingOptions);
+    void initializeHWRenderContext(unsigned int width, unsigned int height,
+                                   bool useDepth, bool useStencil);
 
 private:
     ShaderManager::Config requestedShaderConfig = ShaderManager::Config {
@@ -127,7 +131,7 @@ private:
     std::optional<ShaderManager::Config> loadedShaderType = std::nullopt;
 
     bool isDirty = false;
-    bool directFBRendering = false;
+    bool hwAccelerated = false;
     bool skipDuplicateFrames = false;
     int filterMode = -1;  // -1 = auto (shader decides), 0 = nearest, 1 = linear
     bool bfiEnabled = false;
@@ -143,11 +147,14 @@ private:
 
     Renderer* renderer;
 
-    GLuint scratchFBO = 0;
-    GLuint scratchTex = 0;
-    int scratchW = 0;
-    int scratchH = 0;
-    void ensureScratchFBO(int w, int h);
+    // Shared EGL context for HW-accelerated cores
+    EGLDisplay eglDisplay = EGL_NO_DISPLAY;
+    EGLSurface eglSurface = EGL_NO_SURFACE;
+    EGLContext mainCtx = EGL_NO_CONTEXT;
+    EGLContext hwCtx = EGL_NO_CONTEXT;
+    GLuint hwRenderFBO = 0;
+    GLuint hwRenderTexture = 0;
+    GLuint hwRenderDepthStencil = 0;
 };
 
 }

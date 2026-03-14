@@ -211,18 +211,6 @@ void LibretroDroid::onSurfaceChanged(unsigned int width, unsigned int height) {
 void LibretroDroid::onSurfaceCreated() {
     LOGD("Performing libretrodroid onSurfaceCreated");
 
-    if (Environment::getInstance().isUseHwAcceleration()) {
-        EGLDisplay display = eglGetCurrentDisplay();
-        EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
-        if (display != EGL_NO_DISPLAY && surface != EGL_NO_SURFACE) {
-            if (eglSurfaceAttrib(display, surface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED)) {
-                LOGI("EGL_BUFFER_PRESERVED enabled for HW core");
-            } else {
-                LOGW("EGL_BUFFER_PRESERVED not supported");
-            }
-        }
-    }
-
     struct retro_system_av_info system_av_info {};
     core->retro_get_system_av_info(&system_av_info);
 
@@ -263,7 +251,13 @@ void LibretroDroid::onSurfaceCreated() {
     }
 
     if (Environment::getInstance().getHwContextReset() != nullptr) {
+        if (video && video->isHWAccelerated()) {
+            video->bindHWContext();
+        }
         Environment::getInstance().getHwContextReset()();
+        if (video && video->isHWAccelerated()) {
+            video->bindMainContext();
+        }
     }
 }
 
@@ -453,7 +447,13 @@ void LibretroDroid::destroy() {
     LOGD("Performing libretrodroid destroy");
 
     if (Environment::getInstance().getHwContextDestroy() != nullptr) {
+        if (video && video->isHWAccelerated()) {
+            video->bindHWContext();
+        }
         Environment::getInstance().getHwContextDestroy()();
+        if (video && video->isHWAccelerated()) {
+            video->bindMainContext();
+        }
     }
 
     core->retro_unload_game();
@@ -495,17 +495,23 @@ void LibretroDroid::step() {
         frames = std::min(requestedFrames, 2u);
     }
 
+    if (video && video->isHWAccelerated()) {
+        video->bindHWContext();
+    }
+
     for (size_t i = 0; i < frames * frameSpeed; i++) {
         core->retro_run();
+    }
+
+    if (video && video->isHWAccelerated()) {
+        video->bindMainContext();
     }
 
     if (achievements.isActive()) {
         achievements.evaluateFrame();
     }
 
-    if (video && video->usesDirectFBRendering()) {
-        video->captureAndRenderDirectFB();
-    } else if (video && !video->rendersInVideoCallback()) {
+    if (video && !video->rendersInVideoCallback()) {
         video->renderFrame();
     }
 
