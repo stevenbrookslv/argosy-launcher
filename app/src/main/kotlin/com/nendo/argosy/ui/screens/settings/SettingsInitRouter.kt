@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.cache.GradientPreset
 import com.nendo.argosy.data.emulator.EmulatorRegistry
+import com.nendo.argosy.data.platform.PlatformDefinitions
 import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import com.nendo.argosy.data.emulator.LaunchConfig
 import com.nendo.argosy.data.emulator.SavePathRegistry
@@ -259,11 +260,12 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
 
         val platformConfigs = platforms
             .map { platform ->
+            val canonicalSlug = PlatformDefinitions.getCanonicalSlug(platform.slug)
             val defaultConfig = vm.emulatorConfigDao.getDefaultForPlatform(platform.id)
-            val available = installedEmulators.filter { platform.slug in it.def.supportedPlatforms }
+            val available = installedEmulators.filter { canonicalSlug in it.def.supportedPlatforms }
             val isUserConfigured = defaultConfig != null
 
-            val recommended = EmulatorRegistry.getRecommendedEmulators()[platform.slug] ?: emptyList()
+            val recommended = EmulatorRegistry.getRecommendedEmulators()[canonicalSlug] ?: emptyList()
             val downloadable = recommended
                 .mapNotNull { EmulatorRegistry.getById(it) }
                 .filter { it.packageName !in installedPackages && it.downloadUrl != null }

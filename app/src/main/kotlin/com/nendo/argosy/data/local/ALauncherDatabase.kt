@@ -96,7 +96,7 @@ import com.nendo.argosy.data.local.entity.StateCacheEntity
         PendingSocialSyncEntity::class,
         CoreOptionOverrideEntity::class
     ],
-    version = 86,
+    version = 87,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -1306,7 +1306,11 @@ abstract class ALauncherDatabase : RoomDatabase() {
                 """)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_social_sync_status ON pending_social_sync(status)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_social_sync_syncType ON pending_social_sync(syncType)")
+            }
+        }
 
+        val MIGRATION_86_87 = object : Migration(86, 87) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS core_option_overrides (

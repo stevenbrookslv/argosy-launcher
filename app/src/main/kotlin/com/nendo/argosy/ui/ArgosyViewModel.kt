@@ -38,6 +38,7 @@ import com.nendo.argosy.ui.components.QuickSettingsItem
 import com.nendo.argosy.ui.components.QuickSettingsState
 import com.nendo.argosy.ui.components.quickSettingsItemAtFocusIndex
 import com.nendo.argosy.ui.components.quickSettingsMaxFocusIndex
+import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.util.PServerExecutor
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.domain.usecase.libretro.LibretroMigrationUseCase
@@ -721,20 +722,19 @@ class ArgosyViewModel @Inject constructor(
         initialValue = QuickSettingsUiState()
     )
 
-    val quickSettingsDismissHint: StateFlow<String> = preferencesRepository.userPreferences
-        .map { prefs ->
-            buildString {
-                append("Press B or R3")
-                if (prefs.selectLCombo == "quick_settings") append(" or Select+L")
-                if (prefs.selectRCombo == "quick_settings") append(" or Select+R")
-                append(" to close")
+    val quickSettingsFooterHints: StateFlow<List<Pair<InputButton, String>>> =
+        preferencesRepository.userPreferences
+            .map { prefs ->
+                buildList {
+                    add(InputButton.DPAD_VERTICAL to "Navigate")
+                    add(InputButton.B to "Close")
+                }
             }
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = "Press B or R3 to close"
-        )
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = listOf(InputButton.DPAD_VERTICAL to "Navigate", InputButton.B to "Close")
+            )
 
     val screenDimmerPreferences: StateFlow<ScreenDimmerPreferences> = preferencesRepository.userPreferences
         .map { prefs ->
