@@ -518,7 +518,9 @@ class SavePathResolver @Inject constructor(
             val resolvedPaths = resolveSavePaths(config, platformSlug)
             resolvedPaths.firstOrNull { directoryExists(it) }
                 ?: resolvedPaths.firstOrNull()
-        } ?: return null
+        })
+
+        if (baseDir == null) return null
 
         if (platformSlug == "psx" && romPath != null) {
             val romNameNoExt = File(romPath).nameWithoutExtension
