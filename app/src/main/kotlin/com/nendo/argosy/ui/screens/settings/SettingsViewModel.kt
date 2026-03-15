@@ -342,10 +342,10 @@ class SettingsViewModel @Inject constructor(
     fun confirmEmulatorPickerSelection() = routeConfirmEmulatorPickerSelection(this)
     fun handleEmulatorPickerItemTap(index: Int) = routeHandleEmulatorPickerItemTap(this, index)
 
-    fun setEmulatorSavePath(emulatorId: String, path: String) =
-        emulatorDelegate.setEmulatorSavePath(viewModelScope, emulatorId, path) { loadSettings() }
-    fun resetEmulatorSavePath(emulatorId: String) =
-        emulatorDelegate.resetEmulatorSavePath(viewModelScope, emulatorId) { loadSettings() }
+    fun setPlatformSavePath(platformId: Long, path: String) =
+        emulatorDelegate.setPlatformSavePath(viewModelScope, platformId, path) { loadSettings() }
+    fun resetPlatformSavePath(platformId: Long) =
+        emulatorDelegate.resetPlatformSavePath(viewModelScope, platformId) { loadSettings() }
 
     fun showSavePathModal(config: PlatformEmulatorConfig) = routeShowSavePathModal(this, config)
 

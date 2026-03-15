@@ -36,6 +36,7 @@ class SavePathResolver @Inject constructor(
     private val fal: FileAccessLayer,
     private val emulatorSaveConfigDao: EmulatorSaveConfigDao,
     private val gameDao: GameDao,
+    private val platformDao: PlatformDao,
     private val retroArchConfigParser: RetroArchConfigParser,
     private val titleIdExtractor: TitleIdExtractor,
     private val titleDbRepository: TitleDbRepository,
@@ -74,9 +75,11 @@ class SavePathResolver @Inject constructor(
 
         val effectiveEmulatorId = config.emulatorId
         val userConfig = emulatorSaveConfigDao.getByEmulator(effectiveEmulatorId)
+        val platform = gameId?.let { gameDao.getById(it)?.platformId }?.let { platformDao.getById(it) }
+        val basePathOverride = platform?.customSavePath ?: userConfig?.savePathPattern
         val isRetroArch = effectiveEmulatorId == "retroarch" || effectiveEmulatorId == "retroarch_64"
 
-        if (userConfig?.isUserOverride == true && !isRetroArch) {
+        if (basePathOverride != null && !isRetroArch) {
             if (config.usesFolderBasedSaves && romPath != null) {
                 if (!isFolderSaveSyncEnabled) {
                     return@withContext null
@@ -89,22 +92,22 @@ class SavePathResolver @Inject constructor(
                     emulatorPackage = emulatorPackage,
                     gameId = gameId,
                     gameTitle = gameTitle,
-                    basePathOverride = userConfig.savePathPattern,
+                    basePathOverride = basePathOverride,
                     isFolderSaveSyncEnabled = isFolderSaveSyncEnabled
                 )
             }
             if (config.usesGciFormat && romPath != null) {
-                val gciSave = discoverGciSavePath(config, romPath, userConfig.savePathPattern)
+                val gciSave = discoverGciSavePath(config, romPath, basePathOverride)
                 if (gciSave != null) {
                     Logger.debug(TAG, "discoverSavePath: GCI save found (user override) at $gciSave")
                     return@withContext gciSave
                 }
             }
             if (romPath != null) {
-                val savePath = findSaveByRomName(userConfig.savePathPattern, romPath, config.saveExtensions)
+                val savePath = findSaveByRomName(basePathOverride, romPath, config.saveExtensions)
                 if (savePath != null) return@withContext savePath
             }
-            return@withContext findSaveInPath(userConfig.savePathPattern, gameTitle, config.saveExtensions)
+            return@withContext findSaveInPath(basePathOverride, gameTitle, config.saveExtensions)
         }
 
         if (config.usesFolderBasedSaves && romPath != null) {
@@ -147,22 +150,26 @@ class SavePathResolver @Inject constructor(
             }
         }
 
-        val basePathOverride = if (isRetroArch && userConfig?.isUserOverride == true) {
+        val basePathOverride = platform?.customSavePath ?: (if (isRetroArch && userConfig?.isUserOverride == true) {
             userConfig.savePathPattern
-        } else null
+        } else null)
 
         val paths = if (isRetroArch) {
-            val packageName = if (effectiveEmulatorId == "retroarch_64") "com.retroarch.aarch64" else "com.retroarch"
-            val contentDir = romPath?.let { File(it).parent }
-            if (coreName != null) {
-                Logger.debug(TAG, "discoverSavePath: RetroArch using known core=$coreName (baseOverride=$basePathOverride)")
-                retroArchConfigParser.resolveSavePaths(packageName, platformSlug, coreName, contentDir, basePathOverride)
+            if (basePathOverride == platform?.customSavePath) {
+                listOf(basePathOverride)
             } else {
-                val corePatterns = EmulatorRegistry.getRetroArchCorePatterns()[platformSlug] ?: emptyList()
-                Logger.debug(TAG, "discoverSavePath: RetroArch trying all cores=$corePatterns (baseOverride=$basePathOverride)")
-                corePatterns.flatMap { core ->
-                    retroArchConfigParser.resolveSavePaths(packageName, platformSlug, core, contentDir, basePathOverride)
-                } + retroArchConfigParser.resolveSavePaths(packageName, platformSlug, null, contentDir, basePathOverride)
+                val packageName = if (effectiveEmulatorId == "retroarch_64") "com.retroarch.aarch64" else "com.retroarch"
+                val contentDir = romPath?.let { File(it).parent }
+                if (coreName != null) {
+                    Logger.debug(TAG, "discoverSavePath: RetroArch using known core=$coreName (baseOverride=$basePathOverride)")
+                    retroArchConfigParser.resolveSavePaths(packageName, platformSlug, coreName, contentDir, basePathOverride)
+                } else {
+                    val corePatterns = EmulatorRegistry.getRetroArchCorePatterns()[platformSlug] ?: emptyList()
+                    Logger.debug(TAG, "discoverSavePath: RetroArch trying all cores=$corePatterns (baseOverride=$basePathOverride)")
+                    corePatterns.flatMap { core ->
+                        retroArchConfigParser.resolveSavePaths(packageName, platformSlug, core, contentDir, basePathOverride)
+                    } + retroArchConfigParser.resolveSavePaths(packageName, platformSlug, null, contentDir, basePathOverride)
+                }
             }
         } else {
             resolveSavePaths(config, platformSlug)
@@ -488,16 +495,20 @@ class SavePathResolver @Inject constructor(
         emulatorId: String,
         gameTitle: String,
         platformSlug: String,
-        romPath: String?
+        romPath: String?,
+        gameId: Long? = null
     ): String? {
         val config = SavePathRegistry.getConfig(emulatorId) ?: return null
+
+        val userConfig = emulatorSaveConfigDao.getByEmulator(emulatorId)
+        val platform = gameId?.let { gameDao.getById(it)?.platformId }?.let { platformDao.getById(it) }
+        if (platform?.customSavePath != null) return platform.customSavePath
 
         if (emulatorId == "retroarch" || emulatorId == "retroarch_64") {
             return constructRetroArchSavePath(emulatorId, gameTitle, platformSlug, romPath)
         }
 
-        val userConfig = emulatorSaveConfigDao.getByEmulator(emulatorId)
-        val baseDir = if (userConfig?.isUserOverride == true) {
+        val baseDir = (if (userConfig?.isUserOverride == true) {
             val userPath = userConfig.savePathPattern
             if (directoryExists(userPath) || saveArchiver.getFileForPath(userPath).mkdirs()) userPath else null
         } else {

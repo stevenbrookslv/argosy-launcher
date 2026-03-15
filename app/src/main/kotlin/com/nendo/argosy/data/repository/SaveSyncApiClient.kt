@@ -811,7 +811,7 @@ class SaveSyncApiClient @Inject constructor(
                 )
             } else discovered
 
-            (retried ?: savePathResolver.constructSavePath(resolvedEmulatorId, game.title, game.platformSlug, game.localPath)).also {
+            (retried ?: savePathResolver.constructSavePath(resolvedEmulatorId, game.title, game.platformSlug, game.localPath, game.id)).also {
                 Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | File save path | cached=${syncEntity.localSavePath != null}, discovered=${retried != null}, path=$it")
             }
         }
@@ -1496,8 +1496,9 @@ class SaveSyncApiClient @Inject constructor(
         emulatorId: String,
         gameTitle: String,
         platformSlug: String,
-        romPath: String?
-    ): String? = savePathResolver.constructSavePath(emulatorId, gameTitle, platformSlug, romPath)
+        romPath: String?,
+        gameId: Long? = null
+    ): String? = savePathResolver.constructSavePath(emulatorId, gameTitle, platformSlug, romPath, gameId)
 
     internal suspend fun <T> withRetry(
         maxAttempts: Int = 3,

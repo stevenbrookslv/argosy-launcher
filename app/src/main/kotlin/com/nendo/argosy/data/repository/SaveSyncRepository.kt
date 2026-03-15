@@ -95,8 +95,9 @@ class SaveSyncRepository @Inject constructor(
         emulatorId: String,
         gameTitle: String,
         platformSlug: String,
-        romPath: String?
-    ): String? = apiClient.constructSavePath(emulatorId, gameTitle, platformSlug, romPath)
+        romPath: String?,
+        gameId: Long? = null
+    ): String? = apiClient.constructSavePath(emulatorId, gameTitle, platformSlug, romPath, gameId)
 
     suspend fun getSyncStatus(gameId: Long, emulatorId: String): SaveSyncEntity? =
         entityManager.getSyncStatus(gameId, emulatorId)

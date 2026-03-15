@@ -59,6 +59,9 @@ interface PlatformDao {
     @Query("UPDATE platforms SET logoPath = :path WHERE id = :platformId")
     suspend fun updateLogoPath(platformId: Long, path: String)
 
+    @Query("UPDATE platforms SET customSavePath = :path WHERE id = :platformId")
+    suspend fun updateCustomSavePath(platformId: Long, path: String?)
+
     @Query("UPDATE platforms SET logoPath = NULL WHERE id = :platformId")
     suspend fun clearLogoPath(platformId: Long)
 

@@ -285,33 +285,25 @@ class EmulatorSettingsDelegate @Inject constructor(
         // No explicit refresh needed - the ViewModel calls loadSettings() after this
     }
 
-    fun setEmulatorSavePath(
+    fun setPlatformSavePath(
         scope: CoroutineScope,
-        emulatorId: String,
+        platformId: Long,
         path: String,
         onLoadSettings: suspend () -> Unit
     ) {
         scope.launch {
-            emulatorSaveConfigDao.upsert(
-                EmulatorSaveConfigEntity(
-                    emulatorId = emulatorId,
-                    savePathPattern = path,
-                    isAutoDetected = false,
-                    isUserOverride = true,
-                    lastVerifiedAt = Instant.now()
-                )
-            )
+            platformDao.updateCustomSavePath(platformId, path)
             onLoadSettings()
         }
     }
 
-    fun resetEmulatorSavePath(
+    fun resetPlatformSavePath(
         scope: CoroutineScope,
-        emulatorId: String,
+        platformId: Long,
         onLoadSettings: suspend () -> Unit
     ) {
         scope.launch {
-            emulatorSaveConfigDao.delete(emulatorId)
+            platformDao.updateCustomSavePath(platformId, null)
             onLoadSettings()
         }
     }
