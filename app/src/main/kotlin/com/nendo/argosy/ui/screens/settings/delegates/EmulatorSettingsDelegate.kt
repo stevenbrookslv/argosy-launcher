@@ -9,6 +9,9 @@ import com.nendo.argosy.data.emulator.EmulatorUpdateManager
 import com.nendo.argosy.data.emulator.InstalledEmulator
 import com.nendo.argosy.data.remote.github.EmulatorUpdateRepository
 import com.nendo.argosy.data.remote.github.FetchReleaseResult
+import com.nendo.argosy.data.local.dao.CoreVersionDao
+import com.nendo.argosy.data.local.dao.EmulatorConfigDao
+import com.nendo.argosy.data.local.dao.EmulatorSaveConfigDao
 import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.entity.EmulatorUpdateEntity
 import com.nendo.argosy.data.local.entity.EmulatorSaveConfigEntity
