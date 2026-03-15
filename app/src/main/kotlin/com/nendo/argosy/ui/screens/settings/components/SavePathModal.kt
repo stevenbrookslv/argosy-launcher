@@ -35,7 +35,7 @@ fun SavePathModal(
     onResetSavePath: () -> Unit
 ) {
     Modal(
-        title = "${info.platformName} - ${info.emulatorName}",
+        title = info.platformName,
         baseWidth = Dimens.modalWidthXl,
         onDismiss = onDismiss
     ) {
