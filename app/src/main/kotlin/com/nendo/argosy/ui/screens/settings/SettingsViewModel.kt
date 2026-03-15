@@ -616,8 +616,8 @@ class SettingsViewModel @Inject constructor(
     fun syncPlatform(platformId: Long, platformName: String) = storageDelegate.syncPlatform(viewModelScope, platformId, platformName)
     fun openPlatformSavePathPicker(platformId: Long) = storageDelegate.emitSavePathPicker(viewModelScope, platformId)
 
-    fun setPlatformSavePath(platformId: Long, basePath: String) = routeSetPlatformSavePath(this, platformId, basePath)
-    fun resetPlatformSavePath(platformId: Long) = routeResetPlatformSavePath(this, platformId)
+    fun setPlatformSavePathBase(platformId: Long, basePath: String) = routeSetPlatformSavePath(this, platformId, basePath)
+    fun resetPlatformSavePathBase(platformId: Long) = routeResetPlatformSavePath(this, platformId)
     fun setPlatformStatePath(platformId: Long, basePath: String) = routeSetPlatformStatePath(this, platformId, basePath)
     fun resetPlatformStatePath(platformId: Long) = routeResetPlatformStatePath(this, platformId)
 

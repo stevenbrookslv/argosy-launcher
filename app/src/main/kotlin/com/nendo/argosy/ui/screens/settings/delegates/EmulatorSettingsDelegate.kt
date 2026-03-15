@@ -9,9 +9,7 @@ import com.nendo.argosy.data.emulator.EmulatorUpdateManager
 import com.nendo.argosy.data.emulator.InstalledEmulator
 import com.nendo.argosy.data.remote.github.EmulatorUpdateRepository
 import com.nendo.argosy.data.remote.github.FetchReleaseResult
-import com.nendo.argosy.data.local.dao.CoreVersionDao
-import com.nendo.argosy.data.local.dao.EmulatorConfigDao
-import com.nendo.argosy.data.local.dao.EmulatorSaveConfigDao
+import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.entity.EmulatorUpdateEntity
 import com.nendo.argosy.data.local.entity.EmulatorSaveConfigEntity
 import com.nendo.argosy.domain.usecase.game.ConfigureEmulatorUseCase
@@ -59,7 +57,8 @@ class EmulatorSettingsDelegate @Inject constructor(
     private val coreVersionDao: CoreVersionDao,
     private val emulatorUpdateManager: EmulatorUpdateManager,
     private val emulatorDownloadManager: EmulatorDownloadManager,
-    private val emulatorUpdateRepository: EmulatorUpdateRepository
+    private val emulatorUpdateRepository: EmulatorUpdateRepository,
+    private val platformDao: PlatformDao
 ) {
     companion object {
         private const val TAG = "EmulatorSettingsDelegate"
@@ -313,8 +312,7 @@ class EmulatorSettingsDelegate @Inject constructor(
     }
 
     fun showSavePathModal(
-        emulatorId: String,
-        emulatorName: String,
+        platformId: Long,
         platformName: String,
         savePath: String?,
         isUserOverride: Boolean
@@ -323,8 +321,7 @@ class EmulatorSettingsDelegate @Inject constructor(
             it.copy(
                 showSavePathModal = true,
                 savePathModalInfo = SavePathModalInfo(
-                    emulatorId = emulatorId,
-                    emulatorName = emulatorName,
+                    platformId = platformId,
                     platformName = platformName,
                     savePath = savePath,
                     isUserOverride = isUserOverride

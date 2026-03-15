@@ -285,7 +285,7 @@ fun EmulatorsSection(
                 onDismiss = { viewModel.dismissSavePathModal() },
                 onChangeSavePath = onLaunchSavePathPicker,
                 onResetSavePath = {
-                    viewModel.resetEmulatorSavePath(emulators.savePathModalInfo.emulatorId)
+                    viewModel.resetPlatformSavePath(emulators.savePathModalInfo.platformId)
                 }
             )
         }

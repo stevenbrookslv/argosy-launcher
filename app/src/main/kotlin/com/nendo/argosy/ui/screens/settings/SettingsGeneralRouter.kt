@@ -132,18 +132,17 @@ internal fun routeShowSavePathModal(vm: SettingsViewModel, config: PlatformEmula
     val emulatorId = SavePathRegistry.resolveConfigIdForPackage(installedEmulator.def.packageName)
         ?: installedEmulator.def.id
     vm.emulatorDelegate.showSavePathModal(
-        emulatorId = emulatorId,
-        emulatorName = config.effectiveEmulatorName ?: config.selectedEmulator ?: "Unknown",
+        platformId = config.platform.id,
         platformName = config.platform.name,
         savePath = config.effectiveSavePath,
-        isUserOverride = config.isUserSavePathOverride
+        isUserOverride = config.platform.customSavePath != null
     )
 }
 
 internal fun routeConfirmSavePathModalSelection(vm: SettingsViewModel) {
-    val emulatorId = vm._uiState.value.emulators.savePathModalInfo?.emulatorId ?: return
+    val platformId = vm._uiState.value.emulators.savePathModalInfo?.platformId ?: return
     vm.emulatorDelegate.confirmSavePathModalSelection(vm.viewModelScope) {
-        vm.resetEmulatorSavePath(emulatorId)
+        vm.resetPlatformSavePath(platformId)
     }
 }
 

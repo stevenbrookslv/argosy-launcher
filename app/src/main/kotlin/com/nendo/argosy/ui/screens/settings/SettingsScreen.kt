@@ -264,8 +264,8 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         viewModel.launchSavePathPicker.collect {
-            uiState.emulators.savePathModalInfo?.emulatorId?.let { emulatorId ->
-                fileBrowserCallback = { path -> viewModel.setEmulatorSavePath(emulatorId, path) }
+            uiState.emulators.savePathModalInfo?.platformId?.let { platformId ->
+                fileBrowserCallback = { path -> viewModel.setPlatformSavePath(platformId, path) }
                 showFileBrowser = true
             }
         }
@@ -273,14 +273,14 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         viewModel.launchPlatformSavePathPicker.collect { platformId ->
-            fileBrowserCallback = { path -> viewModel.setPlatformSavePath(platformId, path) }
+            fileBrowserCallback = { path -> viewModel.setPlatformSavePathBase(platformId, path) }
             showFileBrowser = true
         }
     }
 
     LaunchedEffect(Unit) {
         viewModel.resetPlatformSavePathEvent.collect { platformId ->
-            viewModel.resetPlatformSavePath(platformId)
+            viewModel.resetPlatformSavePathBase(platformId)
         }
     }
 
@@ -416,8 +416,8 @@ fun SettingsScreen(
                         uiState = uiState,
                         viewModel = viewModel,
                         onLaunchSavePathPicker = {
-                            uiState.emulators.savePathModalInfo?.emulatorId?.let { emulatorId ->
-                                fileBrowserCallback = { path -> viewModel.setEmulatorSavePath(emulatorId, path) }
+                            uiState.emulators.savePathModalInfo?.platformId?.let { platformId ->
+                                fileBrowserCallback = { path -> viewModel.setPlatformSavePath(platformId, path) }
                                 showFileBrowser = true
                             }
                         }
@@ -472,7 +472,7 @@ fun SettingsScreen(
                         onChangeRomPath = { viewModel.openPlatformFolderPicker(platformId) },
                         onResetRomPath = { viewModel.resetPlatformToGlobal(platformId) },
                         onChangeSavePath = { viewModel.openPlatformSavePathPicker(platformId) },
-                        onResetSavePath = { viewModel.resetPlatformSavePath(platformId) },
+                        onResetSavePath = { viewModel.resetPlatformSavePathBase(platformId) },
                         onChangeStatePath = { },
                         onResetStatePath = { },
                         onResync = { viewModel.syncPlatform(platformId, config.platformName) },

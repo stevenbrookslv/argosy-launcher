@@ -421,8 +421,7 @@ data class CoreOptionsState(
 }
 
 data class SavePathModalInfo(
-    val emulatorId: String,
-    val emulatorName: String,
+    val platformId: Long,
     val platformName: String,
     val savePath: String?,
     val isUserOverride: Boolean

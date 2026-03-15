@@ -77,7 +77,7 @@ class SavePathResolver @Inject constructor(
         val effectiveEmulatorId = config.emulatorId
         val userConfig = emulatorSaveConfigDao.getByEmulator(effectiveEmulatorId)
         val platform = gameId?.let { gameDao.getById(it)?.platformId }?.let { platformDao.getById(it) }
-        val basePathOverride = platform?.customSavePath ?: userConfig?.savePathPattern
+        var basePathOverride = platform?.customSavePath ?: userConfig?.savePathPattern
         val isRetroArch = effectiveEmulatorId == "retroarch" || effectiveEmulatorId == "retroarch_64"
 
         if (basePathOverride != null && !isRetroArch) {
@@ -151,7 +151,7 @@ class SavePathResolver @Inject constructor(
             }
         }
 
-        val basePathOverride = platform?.customSavePath ?: (if (isRetroArch && userConfig?.isUserOverride == true) {
+        basePathOverride = platform?.customSavePath ?: (if (isRetroArch && userConfig?.isUserOverride == true) {
             userConfig.savePathPattern
         } else null)
 
@@ -180,6 +180,7 @@ class SavePathResolver @Inject constructor(
 
         if (romPath != null) {
             for (basePath in paths) {
+                if (basePath == null) continue
                 val savePath = findSaveByRomName(basePath, romPath, config.saveExtensions)
                 if (savePath != null) {
                     Logger.debug(TAG, "discoverSavePath: ROM-based match found at $savePath")
@@ -198,6 +199,7 @@ class SavePathResolver @Inject constructor(
         }
 
         for (basePath in paths) {
+            if (basePath == null) continue
             val saveFile = findSaveInPath(basePath, gameTitle, config.saveExtensions)
             if (saveFile != null) {
                 Logger.debug(TAG, "discoverSavePath: found save at $saveFile")
